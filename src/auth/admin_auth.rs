@@ -1,7 +1,7 @@
 use crate::{app::AppState, errors::AppError};
 use axum::{
     extract::FromRequestParts,
-    http::{StatusCode, header::AUTHORIZATION, request::Parts},
+    http::{header::AUTHORIZATION, request::Parts},
 };
 
 // Aún lo mantengo como constante para que el código funcione ahora,

@@ -1,5 +1,6 @@
 use crate::{models::Asset, routes};
 use axum::Router;
+use sqlx::PgPool;
 use std::{collections::HashMap, sync::Arc};
 use tokio::{net::TcpListener, sync::Mutex};
 use tracing::info;
@@ -11,13 +12,19 @@ use tracing_subscriber::{
 #[derive(Clone)]
 pub struct AppState {
     pub assets: Arc<Mutex<HashMap<i64, Asset>>>, // Esto es un hashmap de assets compartido entre todas las rutas, y protegido por un Mutex para que no haya problemas de concurrencia
+    pub db: PgPool, //Esto ayuda a que todas las rutas tengan acceso a la misma conexion a la base de datos, y no tengamos que crear una nueva conexion cada vez que se hace una peticion
 }
 
 impl AppState {
-    fn new() -> Self {
-        AppState {
+    async fn new() -> color_eyre::Result<Self> {
+        //Recibimos la ruta de la db de una variable de entorno.
+        let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        //Abrimos la conexion a la base de datos, y la guardamos en el estado de la aplicacion, para que todas las rutas tengan acceso a la misma conexion
+        let db_connection = PgPool::connect(&db_url).await?;
+        Ok(AppState {
             assets: Default::default(), // Inicializa el hashmap de assets como un hashmap vacio
-        }
+            db: db_connection,
+        })
     }
 }
 
@@ -30,10 +37,12 @@ impl App {
             .boxed();
         tracing_subscriber::registry().with(layer).init();
 
+        let state = AppState::new().await?;
+
         let listener = TcpListener::bind("0.0.0.0:3000").await?;
         let router = Router::new()
             .nest("/api", routes::api::router())
-            .with_state(AppState::new()); //Diciendole que el estado de la aplicacion es AppState, y que se inicializa con   AppState::new()
+            .with_state(state); //Diciendole que el estado de la aplicacion es AppState, y que se inicializa con   AppState::new()
 
         info!("Server running");
 
