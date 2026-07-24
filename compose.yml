@@ -1,10 +1,10 @@
 services:
     db:
-        image: postgres:latest
+        image: postgres:18.1-alpine3.23
         environment:
-            POSTGRES_USER: user
-            POSTGRES_PASSWORD: password
-            POSTGRES_DB: mydatabase
+            POSTGRES_USER: admin
+            POSTGRES_PASSWORD: pass1234
+            POSTGRES_DB: invest_wallet_db
         ports:
             - "5432:5432"
         volumes:

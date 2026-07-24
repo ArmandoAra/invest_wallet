@@ -1,11 +1,11 @@
 use crate::app::AppState;
 use crate::auth::admin_auth::AdminAuth;
+use crate::errors::AppError;
 use crate::models::Asset;
+use crate::repository::{Repository};
 use axum::Json;
-use axum::extract::State;
-use axum::routing::{get};
+use axum::routing::get;
 use serde::Deserialize;
-use std::collections::HashMap;
 
 pub fn router() -> axum::Router<AppState> {
     axum::Router::new()
@@ -16,10 +16,16 @@ pub fn router() -> axum::Router<AppState> {
 //Axum implementa un injector de dependencias con State, que permite inyectar el estado de la aplicacion en las rutas, para poder acceder a los assets compartidos entre todas las rutas
 //Usamos el atributo #[tracing::instrument(skip_all)] para que no se loguee el estado de la aplicacion, ya que es un vector de assets que puede ser muy grande y no queremos loguearlo, tambien usamos skip_all cuando no queremos que la terminal prite datos sensibles, como contraseñas, tokens, etc.
 #[tracing::instrument(skip_all)]
-pub async fn list_assets(state: State<AppState>) -> Json<HashMap<i64, Asset>> {
-    let assets = state.assets.lock().await; // Bloquea el mutex para acceder al vector de assets, y lo desbloquea automaticamente cuando sale del scope
+async fn list_assets(
+    _admin: AdminAuth,
+    repository: Repository,
+) -> Result<Json<Vec<Asset>>, AppError> {
+    let assets = repository
+        .list_assets_from_db()
+        .await
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
 
-    Json(assets.clone())
+    Ok(Json(assets.clone()))
 }
 
 #[derive(Deserialize)]
@@ -32,26 +38,15 @@ pub struct CreateAssetRequest {
 #[tracing::instrument(skip_all)]
 pub async fn create_asset(
     _admin: AdminAuth, // Inyectamos la dependencia de AdminAuth para que solo los administradores puedan crear assets
-    state: State<AppState>,
+    repository: Repository, // Inyectamos la dependencia de Repository para poder acceder a la base de datos
     Json(request): Json<CreateAssetRequest>,
-) -> Json<Asset> {
-    let mut assets = state.assets.lock().await;
+) -> Result<Json<Asset>, AppError> {
+    let asset = repository
+        .insert_asset_to_db(request.name, request.unit_value)
+        .await
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
 
-    //Creamos un id de momento, pero en un futuro la hace la db.
-    let new_id = assets
-        .keys()
-        .max()
-        .cloned()
-        .unwrap_or_default()
-        + 1; // Genera un ID único basado en la longitud del vector de assets
-
-    let new_asset = Asset {
-        id: new_id, // Aquí deberías generar un ID único
-        name: request.name,
-        unit_value: request.unit_value,
-    };
-    assets.insert(new_id, new_asset.clone());
-    Json(new_asset)
+    Ok(Json(asset))
 }
 
 // actualiza el asset, pero solo si el id existe, sino devuelve un error 404
@@ -65,23 +60,76 @@ pub struct UpdateAssetRequest {
 #[tracing::instrument(skip_all)]
 pub async fn update_asset(
     _admin: AdminAuth,
-    state: State<AppState>,
+    repository: Repository,
     Json(request): Json<UpdateAssetRequest>,
-) -> Result<Json<Asset>, (axum::http::StatusCode, String)> {
-    let mut assets = state.assets.lock().await;
-
-    if let Some(asset) = assets.get_mut(&request.id) {
-        if let Some(name) = request.name {
-            asset.name = name;
-        }
-        if let Some(unit_value) = request.unit_value {
-            asset.unit_value = unit_value;
-        }
-        Ok(Json(asset.clone()))
-    } else {
-        Err((
-            axum::http::StatusCode::NOT_FOUND,
-            "Asset not found".to_string(),
-        ))
+) -> Result<Json<Option<Asset>>, AppError> {
+    match repository
+        .update_asset_to_db(request.id, request.name, request.unit_value)
+        .await
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?
+    {
+        Some(asset) => Ok(Json(Some(asset))),
+        None => Err(AppError::AssetsDoesNotExist),
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use sqlx::PgPool;
+    use super::*;
+
+    #[sqlx::test]
+    async fn test_create_asset(pool: PgPool) {
+        let repository = Repository::from(pool);
+        let request = CreateAssetRequest {
+            name: "Test Asset".to_string(),
+            unit_value: 100.0,
+        };
+
+        let result = create_asset(AdminAuth, repository, Json(request)).await;
+        assert!(result.is_ok());
+        if let Ok(Json(asset)) = result {
+            assert_eq!(asset.id, 1); // Assuming this is the first asset being created in the test database
+            assert_eq!(asset.name, "Test Asset");
+            assert_eq!(asset.unit_value, 100.0);
+
+            insta::assert_json_snapshot!(asset);
+        }
+    }
+
+    #[sqlx::test(fixtures("bitcoin_asset.sql"))] //Las fixtures son archivos SQL que se ejecutan antes de cada test, para poblar la base de datos con datos de prueba. En este caso, estamos usando la fixture bitcoin_asset.sql para poblar la base de datos con un asset llamado Bitcoin antes de ejecutar el test.
+    async fn test_list_assets(pool: PgPool) {
+        let repository = Repository::from(pool);
+        let result = list_assets(AdminAuth, repository).await;
+        assert!(result.is_ok());
+        if let Ok(Json(assets)) = result {
+            assert_eq!(assets.len(), 1); // Assuming the fixture inserts one asset
+            assert_eq!(assets[0].name, "Bitcoin");
+            assert_eq!(assets[0].unit_value, 50000.0);
+
+            insta::assert_json_snapshot!(assets);
+        }
+    }
+
+    #[sqlx::test(fixtures("bitcoin_asset.sql"))]
+    async fn test_update_asset(pool: PgPool) {
+        let repository = Repository::from(pool);
+        let request = UpdateAssetRequest {
+            id: 1,
+            name: Some("Updated Bitcoin".to_string()),
+            unit_value: Some(60000.0),
+        };
+
+        let result = update_asset(AdminAuth, repository, Json(request)).await;
+        assert!(result.is_ok());
+        if let Ok(Json(Some(asset))) = result {
+            assert_eq!(asset.id, 1);
+            assert_eq!(asset.name, "Updated Bitcoin");
+            assert_eq!(asset.unit_value, 60000.0);
+
+            insta::assert_json_snapshot!(asset);
+        }
+    }
+}
+

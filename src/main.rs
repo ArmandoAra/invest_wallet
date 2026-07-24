@@ -4,6 +4,7 @@ pub mod auth;
 pub mod models;
 pub mod routes;
 pub mod errors;
+pub mod repository;
 
 use crate::app::App;
 
