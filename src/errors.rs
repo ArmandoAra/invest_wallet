@@ -8,10 +8,18 @@ pub enum AppError {
     MissingAuthorization,
     #[error("Invalid credentials")]
     InvalidCredentials,
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+    #[error("El usuario ya existe")]
+    UserAlreadyExists,
+    #[error("User does not exist")]
+    UserDoesNotExist,
     #[error("Assets does not exist")]
     AssetsDoesNotExist,
     #[error(transparent)]
     DatabaseError(#[from] sqlx::Error),
+    #[error(transparent)]
+    Template(#[from] askama::Error),
 }
 
 //Ahora definimos como los errores se van a mostrar en la respuesta de la API, para eso implementamos la trait IntoResponse de axum, que nos permite convertir nuestro error en una respuesta HTTP
@@ -30,8 +38,12 @@ impl IntoResponse for AppError {
         let status = match self {
             Self::MissingAuthorization => StatusCode::UNAUTHORIZED,
             Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
+            Self::BadRequest(_) => StatusCode::BAD_REQUEST,
+            Self::UserAlreadyExists => StatusCode::CONFLICT,
+            Self::UserDoesNotExist => StatusCode::NOT_FOUND,
             Self::AssetsDoesNotExist => StatusCode::NOT_FOUND,
             Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Template(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
         (status, axum::Json(error_response)).into_response()

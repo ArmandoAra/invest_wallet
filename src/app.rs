@@ -41,6 +41,7 @@ impl App {
         let listener = TcpListener::bind("0.0.0.0:3000").await?;
         let router = Router::new()
             .nest("/api", routes::api::router())
+            .merge(routes::frontend::frontend_routes())
             .with_state(state); //Diciendole que el estado de la aplicacion es AppState, y que se inicializa con   AppState::new()
 
         info!("Server running");

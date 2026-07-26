@@ -1,7 +1,7 @@
-use std::convert::Infallible;
-use crate::models::Asset;
+use crate::models::{Asset, UserRecord};
 use axum::extract::FromRequestParts;
 use sqlx::PgPool;
+use std::convert::Infallible;
 
 use crate::app::AppState;
 
@@ -11,6 +11,50 @@ pub struct Repository {
 
 //Aqui definimos las funciones que van a interactuar con la base de datos, como por ejemplo crear, leer, actualizar y eliminar assets de la base de datos. Estas funciones van a ser llamadas desde las rutas, y van a recibir como parametro el estado de la aplicacion, para poder acceder a la conexion a la base de datos.
 impl Repository {
+    //Users
+    //Nota: Vamos a recibir ya el hash , el repository no se va a encargar de hashear la contraseña, eso lo hace el handler de la ruta, para que el repository solo se encargue de interactuar con la base de datos y no tenga que preocuparse por la logica de negocio.
+    //Retornamos el id del usuario creado, para eso hacemos un query que inserte el usuario y retorne el id del usuario creado
+    pub async fn insert_user_to_db(
+    &self, 
+    username: &str, 
+    password_hash: &str
+) -> Result<UserRecord, crate::errors::AppError> {
+    let result = sqlx::query_as!(
+        UserRecord,
+        "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, password_hash;",
+        username,
+        password_hash
+    )
+    .fetch_one(&self.db)
+    .await;
+
+    match result {
+        Ok(user) => Ok(user),
+        // Código 23505 = Unique Violation en PostgreSQL
+        Err(sqlx::Error::Database(db_err)) if db_err.code().as_deref() == Some("23505") => {
+            Err(crate::errors::AppError::UserAlreadyExists)
+        }
+        // Para SQLite el mensaje/código varía, o para cualquier otro error genérico:
+        Err(e) => Err(crate::errors::AppError::DatabaseError(e)),
+    }
+}
+
+    pub async fn find_by_username(
+    &self,
+    username: &str,
+) -> Result<Option<UserRecord>, crate::errors::AppError> {
+    sqlx::query_as!(
+        UserRecord,
+        "SELECT id, username, password_hash FROM users WHERE username = $1;",
+        username
+    )
+    .fetch_optional(&self.db)
+    .await
+    // Convertimos el sqlx::Error genérico en el error de nuestra aplicación
+    .map_err(crate::errors::AppError::DatabaseError) 
+}
+
+    // Assets
     pub async fn list_assets_from_db(&self) -> sqlx::Result<Vec<Asset>> {
         //Aqui hacemos la consulta a la base de datos para obtener todos los assets, y los devolvemos como un vector de assets
         let assets = sqlx::query_as!(Asset, "SELECT id, name, unit_value FROM assets;")
@@ -31,7 +75,12 @@ impl Repository {
         Ok(asset)
     }
 
-    pub async fn update_asset_to_db(&self, id: i64, name: Option<String>, unit_value: Option<f64>) -> sqlx::Result<Option<Asset>> {
+    pub async fn update_asset_to_db(
+        &self,
+        id: i64,
+        name: Option<String>,
+        unit_value: Option<f64>,
+    ) -> sqlx::Result<Option<Asset>> {
         let asset = sqlx::query_as!(
             Asset,
             "UPDATE assets SET name = COALESCE($2, name), unit_value = COALESCE($3, unit_value) WHERE id = $1 RETURNING id, name, unit_value;",
@@ -53,10 +102,11 @@ impl FromRequestParts<AppState> for Repository {
         _parts: &mut axum::http::request::Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        Ok(Self { db: state.db.clone() })
+        Ok(Self {
+            db: state.db.clone(),
+        })
     }
 }
-
 
 #[cfg(test)]
 impl From<PgPool> for Repository {
