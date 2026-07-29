@@ -39,6 +39,24 @@ impl Repository {
     }
 }
 
+    pub async fn find_user_by_id(
+        &self,
+        user_id: i64,
+    ) -> Result<Option<UserRecord>, crate::errors::AppError> {
+        let result = sqlx::query_as!(
+            UserRecord,
+            "SELECT id, username, password_hash FROM users WHERE id = $1;",
+            user_id
+        )
+        .fetch_optional(&self.db)
+        .await;
+
+        match result {
+            Ok(user) => Ok(user),
+            Err(e) => Err(crate::errors::AppError::DatabaseError(e)),
+        }
+    }
+
     pub async fn find_by_username(
     &self,
     username: &str,
