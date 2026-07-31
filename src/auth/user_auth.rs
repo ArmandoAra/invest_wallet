@@ -64,7 +64,7 @@ impl UnauthenticatedUser {
 //Estructura para el usuario autenticado, que se va a usar en los endpoints que requieren autenticación de usuario
 pub struct UserAuth {
     user_id: i64,
-    username: String,
+    pub username: String,
 }
 
 impl UserAuth {

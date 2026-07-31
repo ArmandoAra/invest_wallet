@@ -1,4 +1,6 @@
-use serde::{Serialize};
+use serde::{Serialize, Deserialize};
+use time::OffsetDateTime;
+use sqlx::types::Json;
 
 #[derive(Serialize, Clone,Debug)]
 pub struct Asset {
@@ -13,4 +15,30 @@ pub struct UserRecord {
     pub id: i64,
     pub username: String,
     pub password_hash: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PurchaseHistory {
+    #[serde(with = "time::serde::iso8601")]
+    pub bought_at: OffsetDateTime,
+    pub bought_for: f64,
+    pub quantity_bought: f64,
+    pub value_delta: f64,
+}
+
+#[derive(Serialize)]
+pub struct OwnedAsset {
+    pub id: i64,
+    pub name: String,
+    pub unit_value: f64,
+    pub value_delta: f64, //Cantidad de lucros o perdidas que se han tenido con el asset, calculado como (current_value - bought_for) * quantity_owned
+    pub quantity_owned: f64,
+    pub purchase_history: Json<Vec<PurchaseHistory>>,
+}
+
+#[derive(Deserialize)]
+pub struct PurchaseAssetRequest {
+    pub asset_id: i64,
+    pub unit_value: f64,
+    pub quantity_owned: f64,
 }

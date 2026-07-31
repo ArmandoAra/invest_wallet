@@ -1,16 +1,20 @@
 use crate::app::AppState;
 use crate::auth::admin_auth::AdminAuth;
+use crate::auth::user_auth::UserAuth;
 use crate::errors::AppError;
 use crate::models::Asset;
 use crate::repository::{Repository};
 use axum::Json;
 use axum::routing::get;
 use serde::Deserialize;
+use crate::models::PurchaseAssetRequest;
 
 pub fn router() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/assets", get(list_assets).post(create_asset))
         .route("/assets/update", axum::routing::patch(update_asset))
+        .route("/assets/purchase", axum::routing::post(purchase_asset))
+       .route("/assets/delete/{asset_id}", axum::routing::post(delete_asset_from_db))
 }
 
 //Axum implementa un injector de dependencias con State, que permite inyectar el estado de la aplicacion en las rutas, para poder acceder a los assets compartidos entre todas las rutas
@@ -73,6 +77,37 @@ pub async fn update_asset(
     }
 }
 
+pub async fn purchase_asset(
+    user_auth: UserAuth,
+    repository: Repository,
+    Json(request): Json<PurchaseAssetRequest>,
+) -> Result<(), AppError> {
+    repository
+        .insert_owned_asset_to_db(
+            user_auth.user_id(),
+            request.asset_id,
+            request.quantity_owned,
+            request.unit_value,
+        )
+        .await
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
+
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn delete_asset_from_db(
+    _admin: AdminAuth,
+    repository: Repository,
+    axum::extract::Path(asset_id): axum::extract::Path<i64>,
+) -> Result<(), AppError> {
+    repository
+        .delete_asset_from_db(asset_id)
+        .await
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
+
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
