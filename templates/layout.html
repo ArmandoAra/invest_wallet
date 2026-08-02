@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Invest Wallet{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Estilos Globales Consistentes -->
+    <style>
+        body {
+            background-color: #020b14;
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar Minimalista */
+        .navbar-minimal {
+            background-color: #020b14; /* Mismo fondo para fusionarse */
+            border-bottom: 1px solid #1e293b; /* Línea separadora sutil */
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            color: #ffffff !important;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+            font-size: 1.25rem;
+        }
+
+        .nav-link-minimal {
+            color: #64748b;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.2s ease;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+        }
+
+        .nav-link-minimal:hover {
+            color: #ffffff;
+        }
+
+        .user-greeting {
+            color: #f8fafc;
+            font-size: 0.9rem;
+            margin-right: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        /* El main ocupa el espacio restante empujando el footer si hubiera */
+        main {
+            flex: 1;
+        }
+    </style>
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+    
+    <nav class="navbar navbar-minimal navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">Invest Wallet</a>
+            
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="bi bi-list text-light fs-2"></i>
+            </button>
+            
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <div class="d-flex align-items-center mt-3 mt-lg-0">
+                    <!-- 
+                        CONDICIONAL ASKAMA:
+                        Requiere que todos tus structs tengan `pub current_user: Option<String>`
+                    -->
+                    {% if let Some(username) = current_user %}
+                        <span class="user-greeting">
+                            <i class="bi bi-person-circle text-primary me-2 fs-5"></i> 
+                            {{ username }}
+                        </span>
+                        <a href="/" class="nav-link-minimal">Salir <i class="bi bi-box-arrow-right ms-1"></i></a>
+                    {% else %}
+                        <a href="/login" class="nav-link-minimal">Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

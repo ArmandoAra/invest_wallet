@@ -14,7 +14,10 @@ pub fn router() -> axum::Router<AppState> {
         .route("/assets", get(list_assets).post(create_asset))
         .route("/assets/update", axum::routing::patch(update_asset))
         .route("/assets/purchase", axum::routing::post(purchase_asset))
-       .route("/assets/delete/{asset_id}", axum::routing::post(delete_asset_from_db))
+        .route("/assets/purchase/update/{asset_id}", axum::routing::patch(update_owned_asset_history))
+        .route("/assets/purchase/delete/{asset_id}", axum::routing::delete(delete_owned_asset_history))
+        .route("/assets/delete/{asset_id}", axum::routing::post(delete_asset))
+        .route("/assets/update/{asset_id}", axum::routing::patch(update_asset))
 }
 
 //Axum implementa un injector de dependencias con State, que permite inyectar el estado de la aplicacion en las rutas, para poder acceder a los assets compartidos entre todas las rutas
@@ -96,7 +99,40 @@ pub async fn purchase_asset(
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn delete_asset_from_db(
+pub async fn update_owned_asset_history(
+    user_auth: UserAuth,
+    repository: Repository,
+    Json(request): Json<PurchaseAssetRequest>,
+) -> Result<(), AppError> {
+    repository
+        .update_owned_asset_history_in_db(
+            user_auth.user_id(),
+            request.history_id, 
+            request.quantity_owned,
+            request.unit_value,
+        )
+        .await
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
+
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn delete_owned_asset_history(
+    user_auth: UserAuth,
+    repository: Repository,
+    axum::extract::Path(asset_id): axum::extract::Path<i64>,
+) -> Result<(), AppError> {
+    repository
+        .delete_owned_asset_from_db(user_auth.user_id(), asset_id)
+        .await
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
+
+    Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn delete_asset(
     _admin: AdminAuth,
     repository: Repository,
     axum::extract::Path(asset_id): axum::extract::Path<i64>,
@@ -113,7 +149,7 @@ pub async fn delete_asset_from_db(
 mod tests {
     use sqlx::PgPool;
     use super::*;
-
+    // Assets 
     #[sqlx::test]
     async fn test_create_asset(pool: PgPool) {
         let repository = Repository::from(pool);
@@ -166,5 +202,6 @@ mod tests {
             insta::assert_json_snapshot!(asset);
         }
     }
+    
 }
 

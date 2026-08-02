@@ -119,7 +119,7 @@ impl Repository {
     }
 
     //Owned Assets
-    pub async fn list_owned_assets_from_db(&self, user_id: i64) -> sqlx::Result<Vec<OwnedAsset>> {
+pub async fn list_owned_assets_from_db(&self, user_id: i64) -> sqlx::Result<Vec<OwnedAsset>> {
         let owned_assets = sqlx::query_as!(
             OwnedAsset,
             r#"
@@ -131,6 +131,7 @@ impl Repository {
             SUM(o.quantity_owned) AS "quantity_owned!",
             JSON_AGG(
                 JSON_BUILD_OBJECT(
+                    'id', o.id, -- <--- ESTA ES LA LÍNEA CLAVE QUE FALTABA
                     'bought_at', o.timestamp,
                     'bought_for', o.bought_for,
                     'quantity_bought', o.quantity_owned,
@@ -167,6 +168,56 @@ impl Repository {
     .execute(&self.db)
     .await?;
         Ok(())
+    }
+
+    pub async fn update_owned_asset_history_in_db(
+        &self,
+        user_id: i64,
+        history_id: i64,
+        quantity: f64,
+        bought_for: f64,
+    ) -> sqlx::Result<bool> {
+        let result = sqlx::query!(
+            // Eliminamos la búsqueda inútil del asset_id
+            "UPDATE owned_assets SET quantity_owned = $1, bought_for = $2 WHERE id = $3 AND user_id = $4;",
+            quantity,
+            bought_for,
+            history_id,
+            user_id
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+    
+    pub async fn delete_owned_asset_history_from_db(
+        &self,
+        user_id: i64,
+        history_id: i64,
+    ) -> sqlx::Result<bool> {
+        let result = sqlx::query!(
+            "DELETE FROM owned_assets WHERE user_id = $1 AND id = $2;",
+            user_id,
+            history_id
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    pub async fn delete_owned_asset_from_db(
+        &self,
+        user_id: i64,
+        asset_id: i64,
+    ) -> sqlx::Result<bool> {
+        let result = sqlx::query!(
+            "DELETE FROM owned_assets WHERE user_id = $1 AND asset_id = $2;",
+            user_id,
+            asset_id
+        )
+        .execute(&self.db)
+        .await?;
+        Ok(result.rows_affected() > 0)
     }
 }
 

@@ -19,6 +19,7 @@ pub struct UserRecord {
 
 #[derive(Serialize, Deserialize)]
 pub struct PurchaseHistory {
+    pub id: i64,
     #[serde(with = "time::serde::iso8601")]
     pub bought_at: OffsetDateTime,
     pub bought_for: f64,
@@ -38,7 +39,8 @@ pub struct OwnedAsset {
 
 #[derive(Deserialize)]
 pub struct PurchaseAssetRequest {
-    pub asset_id: i64,
-    pub unit_value: f64,
     pub quantity_owned: f64,
+    pub unit_value: f64,
+    pub asset_id: i64,
+    pub history_id: i64, // Agregamos un campo opcional para el history_id, que será usado para actualizar una compra específicas
 }

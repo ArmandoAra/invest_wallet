@@ -6,7 +6,14 @@ use axum::{
 
 // Aún lo mantengo como constante para que el código funcione ahora,
 // pero te insisto: mueve esto a una variable de entorno con std::env::var.
-const ADMIN_SECRET_KEY: &str = "your_admin_secret_key";
+//Obtenido de la .env
+const ADMIN_SECRET_KEY: &str = {
+    const DEFAULT: &str = "supersecretkey_to_use_for_a_supersecret"; // Valor por defecto si no
+    match option_env!("ADMIN_SECRET_KEY") {
+        Some(val) => val,
+        None => DEFAULT,
+    }
+};
 
 pub struct AdminAuth;
 

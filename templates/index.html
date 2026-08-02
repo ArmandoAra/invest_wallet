@@ -1,0 +1,167 @@
+{% extends "layout.html" %}
+
+{% block title %}Invest Wallet | Tu Portafolio Inteligente{% endblock %}
+
+{% block head %}
+<style>
+    /* Estilos exclusivos para la Landing Page */
+    .hero-section {
+        padding: 6rem 1rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 76px); /* Restamos la altura aproximada del navbar */
+    }
+
+    .hero-title {
+        font-size: clamp(2.5rem, 5vw, 4.5rem);
+        font-weight: 800;
+        letter-spacing: -1.5px;
+        margin-bottom: 1.5rem;
+        /* Efecto de texto con gradiente elegante */
+        background: linear-gradient(135deg, #f8fafc 0%, #60a5fa 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: #64748b;
+        max-width: 600px;
+        margin: 0 auto 3rem auto;
+        line-height: 1.6;
+        font-weight: 400;
+    }
+
+    /* Botones de llamada a la acción (CTA) */
+    .btn-hero-primary {
+        background-color: #3b82f6;
+        color: #ffffff;
+        border: none;
+        padding: 0.85rem 2.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-hero-primary:hover {
+        background-color: #2563eb;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-hero-outline {
+        background-color: transparent;
+        color: #f8fafc;
+        border: 1px solid #334155;
+        padding: 0.85rem 2.5rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-hero-outline:hover {
+        border-color: #64748b;
+        background-color: rgba(248, 250, 252, 0.05);
+        color: #ffffff;
+    }
+
+    /* Tarjetas de características */
+    .features-grid {
+        margin-top: 2rem;
+        margin-bottom: 5rem;
+    }
+
+    .feature-card {
+        background-color: rgba(15, 23, 42, 0.6);
+        border: 1px solid #1e293b;
+        border-radius: 16px;
+        padding: 2.5rem 2rem;
+        height: 100%;
+        transition: transform 0.3s ease, border-color 0.3s ease;
+        text-align: left;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        border-color: #3b82f6;
+    }
+
+    .feature-icon {
+        font-size: 2.5rem;
+        color: #3b82f6;
+        margin-bottom: 1.5rem;
+    }
+
+    .feature-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #f8fafc;
+        margin-bottom: 1rem;
+    }
+
+    .feature-text {
+        color: #64748b;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    
+    <!-- Hero Section Principal -->
+    <section class="hero-section">
+        <h1 class="hero-title">Tu riqueza, bajo tu control absoluto.</h1>
+        <p class="hero-subtitle">
+            Invest Wallet es la herramienta definitiva para gestionar tus activos, registrar tus compras y analizar el rendimiento de tu portafolio en tiempo real.
+        </p>
+        
+        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center w-100">
+            <a href="/login" class="btn btn-hero-primary">Login</a>
+        </div>
+    </section>
+
+    <!-- Sección de Características (Beneficios) -->
+    <section class="features-grid">
+        <div class="row g-4">
+            
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="bi bi-shield-check feature-icon"></i>
+                    <h3 class="feature-title">Seguridad y Privacidad</h3>
+                    <p class="feature-text">Tus datos te pertenecen. Mantenemos tu información segura con los más altos estándares de encriptación.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="bi bi-graph-up-arrow feature-icon"></i>
+                    <h3 class="feature-title">Métricas Claras</h3>
+                    <p class="feature-text">Visualiza el rendimiento de tus activos con indicadores precisos. Sin ruido, solo los números que importan.</p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <i class="bi bi-lightning-charge feature-icon"></i>
+                    <h3 class="feature-title">Rápido y Minimalista</h3>
+                    <p class="feature-text">Una interfaz sin distracciones, diseñada para que registres tus movimientos en segundos y sigas con tu día.</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+</div>
+{% endblock %}

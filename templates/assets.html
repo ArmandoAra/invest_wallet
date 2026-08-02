@@ -1,65 +1,67 @@
-<!DOCTYPE html>
-<html lang="es" data-bs-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assets</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>\/* Pequeño ajuste para centrar la tarjeta en toda la pantalla */
-        body {
-            display: flex;
-            align-items: center;
-            padding-top: 40px;
-            padding-bottom: 40px;
-            background-color: #031527;
-            height: 100vh;
-        }
-    </style>
-</head>
-<body>
-    <main class="form-signin w-100 m-auto">
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-4 p-md-5">
-                <h2 class="text-center mb-4 fw-bold">Bienvenido {{ _user.username() }}</h2>
-                <p class="text-center text-muted mb-4">Aquí puedes ver y gestionar tus activos.</p>
+{% extends "layout.html" %}
+
+{% block title %}Mi Portafolio | Invest Wallet{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    
+    <!-- Tarjeta de Bienvenida -->
+    <div class="card bg-dark text-light border-secondary shadow-sm mb-4">
+        <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h3 class="mb-1 fw-bold text-white">Bienvenido, {{ user.username() }}</h3>
+                <p class="text-white-50 mb-0">Aquí puedes ver y gestionar tu portafolio de activos.</p>
             </div>
-        </div>
-    </main>
-<div class="container mt-5">
-    <!-- Encabezado con Botones Principales -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-wallet2 text-primary me-2"></i>Mis Activos</h2>
-        <div>
-            <!-- Botón para abrir el Modal -->
-            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#purchaseModal">
-                <i class="bi bi-plus-lg me-1"></i> Register Purchase
+            <button type="button" class="btn btn-success fw-semibold" data-bs-toggle="modal" data-bs-target="#purchaseModal">
+                <i class="bi bi-plus-lg me-2"></i> Registrar Compra
             </button>
-            <a href="/logout" class="btn btn-outline-danger">
-                <i class="bi bi-box-arrow-right me-1"></i> Logout
-            </a>
         </div>
     </div>
+
+    <!-- NUEVO: Resumen Global de la Cartera -->
+    <div class="row mb-5">
+        <div class="col-md-6 mb-3 mb-md-0">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body p-4">
+                    <h6 class="text-white-50 text-uppercase letter-spacing-1 mb-2">Balance Total</h6>
+                    <h2 class="text-white fw-bold mb-0">
+                        <!-- Usamos el nuevo campo de Rust -->
+                        ${{ portfolio_total }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body p-4">
+                    <h6 class="text-white-50 text-uppercase letter-spacing-1 mb-2">Rendimiento Histórico</h6>
+                    <h2 class="fw-bold mb-0 {% if portfolio_delta >= 0.0 %}text-success{% else %}text-danger{% endif %}">
+                        <!-- Usamos el nuevo campo de Rust y le damos color dinámico -->
+                        {% if portfolio_delta > 0.0 %}+{% endif %}${{ portfolio_delta }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mb-4 text-white"><i class="bi bi-wallet2 text-primary me-2"></i>Mis Activos</h4>
 
     <!-- Lista de Activos (Acordeón de Bootstrap) -->
     <div class="accordion shadow-sm" id="assetsAccordion">
         {% if owned_assets.is_empty() %}
-            <div class="alert alert-secondary text-center m-0">
-                No tienes activos registrados en tu portafolio.
+            <div class="alert bg-dark border-secondary text-light text-center py-4 m-0">
+                No tienes activos registrados en tu portafolio. ¡Usa el botón de arriba para registrar uno!
             </div>
         {% else %}
             {% for owned in owned_assets %}
-            <div class="accordion-item border-secondary">
+            <div class="accordion-item border-secondary bg-dark text-light">
                 <h2 class="accordion-header" id="heading-{{ owned.id }}">
-                    <button class="accordion-button collapsed bg-dark text-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ owned.id }}" aria-expanded="false" aria-controls="collapse-{{ owned.id }}">
+                    <button class="accordion-button collapsed bg-dark text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ owned.id }}" aria-expanded="false" aria-controls="collapse-{{ owned.id }}">
                         
-                        <!-- Distribución de datos en la barra principal -->
                         <div class="d-flex w-100 justify-content-between align-items-center me-3">
-                            <strong class="mb-0" style="width: 25%;">{{ owned.name }}</strong>
-                            <span class="text-muted" style="width: 25%;">Qty: {{ owned.quantity_owned }}</span>
-                            <span style="width: 25%;">Unit: ${{ owned.unit_value }}</span>
-                            
-                            <!-- Coloreado dinámico para el change (value_delta) -->
+                            <strong class="mb-0 text-white" style="width: 25%;">{{ owned.name }}</strong>
+                            <span class="text-white-50 fw-semibold" style="width: 25%;">Qty Total: <span class="text-white">{{ owned.quantity_owned }}</span></span>
+                            <span class="text-white-50 fw-semibold" style="width: 25%;">Promedio: <span class="text-white">${{ owned.unit_value }}</span></span>
                             <span class="{% if owned.value_delta >= 0.0 %}text-success{% else %}text-danger{% endif %} fw-bold" style="width: 25%; text-align: right;">
                                 {% if owned.value_delta > 0.0 %}+{% endif %}${{ owned.value_delta }}
                             </span>
@@ -70,43 +72,89 @@
                 <div id="collapse-{{ owned.id }}" class="accordion-collapse collapse bg-dark text-light" aria-labelledby="heading-{{ owned.id }}" data-bs-parent="#assetsAccordion">
                     <div class="accordion-body border-top border-secondary">
                         
-                        <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Historial de Compras</h6>
+                        <h6 class="text-white-50 mb-3"><i class="bi bi-list-check me-2"></i>Desglose de Compras</h6>
                         
-                        <!-- OJO: Usamos .0 para acceder al Vec real dentro del wrapper sqlx::types::Json -->
                         {% if owned.purchase_history.0.is_empty() %}
-                            <p class="text-muted small">No hay historial de compras detallado.</p>
+                            <p class="text-white-50 small">No hay historial de compras detallado.</p>
                         {% else %}
                             <div class="table-responsive">
                                 <table class="table table-dark table-sm table-hover border-secondary align-middle mb-4">
                                     <thead>
                                         <tr>
-                                            <th>Purchase Date</th>
-                                            <th>Bought For</th>
-                                            <th>Quantity</th>
-                                            <th>Change</th>
+                                            <th class="text-white-50">Fecha</th>
+                                            <th class="text-white-50">Precio Compra</th>
+                                            <th class="text-white-50">Cantidad</th>
+                                            <th class="text-white-50">Rendimiento</th>
+                                            <th class="text-white-50 text-end">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for history in owned.purchase_history.0 %}
                                         <tr>
-                                            <!-- Esto se imprimirá en formato ISO 8601 crudo -->
-                                            <td>{{ history.bought_at }}</td>
-                                            <td>${{ history.bought_for }}</td>
-                                            <td>{{ history.quantity_bought }}</td>
-                                            <td class="{% if history.value_delta >= 0.0 %}text-success{% else %}text-danger{% endif %}">
+                                            <td class="text-light">{{ history.bought_at }}</td>
+                                            <td class="text-light">${{ history.bought_for }}</td>
+                                            <td class="text-light">{{ history.quantity_bought }}</td>
+                                            <td class="{% if history.value_delta >= 0.0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
                                                 {% if history.value_delta > 0.0 %}+{% endif %}${{ history.value_delta }}
                                             </td>
+                                            <td class="text-end">
+                                                <div class="d-flex justify-content-end gap-2">
+                                                    <!-- Botón Editar Compra Individual (Asume que history tiene un .id) -->
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPurchaseModal-{{ history.id }}">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </button>
+                                                    
+                                                    <!-- Botón Eliminar Compra Individual -->
+                                                    <form action="/assets/purchase/delete/{{ history.id }}" method="POST" onsubmit="return confirm('¿Eliminar esta compra específica?');">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
                                         </tr>
+
+                                        <!-- Modal para Editar esta compra en particular -->
+                                        <div class="modal fade" id="editPurchaseModal-{{ history.id }}" tabindex="-1" aria-hidden="true">
+                                          <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content bg-dark text-light border-secondary">
+                                              <div class="modal-header border-secondary">
+                                                <h5 class="modal-title">Editar Compra: {{ owned.name }}</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                              </div>
+                                              
+                                              <!-- Acción que apunta al ID único de esta compra -->
+                                              <form action="/assets/purchase/update/{{ history.id }}" method="POST">
+                                                  <div class="modal-body text-start">
+                                                      <div class="mb-3">
+                                                          <label for="edit_bought_for_{{ history.id }}" class="form-label fw-semibold text-light">Precio de Compra ($)</label>
+                                                          <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_bought_for_{{ history.id }}" name="bought_for" value="{{ history.bought_for }}" required>
+                                                      </div>
+                                                      <div class="mb-3">    
+                                                          <label for="edit_quantity_{{ history.id }}" class="form-label fw-semibold text-light">Cantidad Comprada</label>
+                                                          <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_quantity_{{ history.id }}" name="quantity_bought" value="{{ history.quantity_bought }}" required>
+                                                      </div>
+                                                  </div>
+                                                  <div class="modal-footer border-secondary">
+                                                      <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
+                                                      <button type="submit" class="btn btn-primary fw-semibold">Guardar Cambios</button>
+                                                  </div>
+                                              </form>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <!-- Fin Modal Editar Compra -->
+
                                         {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
                         {% endif %}
 
-                        <!-- Botón de Eliminar movido al fondo derecho del panel -->
-                        <div class="d-flex justify-content-end border-top border-secondary pt-3">
-                            <form action="/assets/delete/{{ owned.id }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas eliminar todo este activo de tu portafolio?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Eliminar Activo</button>
+                        <!-- Mantenemos el botón de eliminar TODO el activo por si quieren limpiar el portafolio -->
+                        <div class="d-flex justify-content-end border-top border-secondary pt-3 mt-3">
+                            <form action="/assets/delete/{{ owned.id }}" method="POST" onsubmit="return confirm('ATENCIÓN: Esto eliminará TODAS las compras de {{ owned.name }}. ¿Continuar?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill me-1"></i> Eliminar Todo el Activo</button>
                             </form>
                         </div>
 
@@ -118,54 +166,90 @@
     </div>
 </div>
 
-<!-- Modal para Registrar Compra (Popup) -->
+<!-- Modal para Registrar Compra NUEVA (Popup general) -->
 <div class="modal fade" id="purchaseModal" tabindex="-1" aria-labelledby="purchaseModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-dark text-light border-secondary">
       
       <div class="modal-header border-secondary">
-        <h5 class="modal-title" id="purchaseModalLabel">Registrar Nuevo Activo</h5>
+        <h5 class="modal-title text-white fw-bold" id="purchaseModalLabel">Registrar Nueva Compra</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       
-      <!-- OJO: La ruta action debe coincidir con donde ruteaste la función purchase_asset en Axum -->
       <form action="/assets" method="POST">
           <div class="modal-body">
               
-              <!-- Selector de Activos Dinámico -->
               <div class="mb-3">
-                  <label for="asset_id" class="form-label text-muted">Selecciona el Activo</label>
-                  <select class="form-select bg-dark text-light border-secondary" id="asset_id" name="asset_id" required>
+                  <label for="asset_id" class="form-label fw-semibold text-light">Selecciona el Activo</label>
+                  <select class="form-select bg-dark text-white border-secondary" id="asset_id" name="asset_id" required>
                       <option value="" disabled selected>Elige un activo de la lista...</option>
-                      <!-- Iteramos sobre los activos que vienen de la BD -->
                       {% for asset in available_assets %}
                       <option value="{{ asset.id }}">{{ asset.name }}</option>
                       {% endfor %}
                   </select>
               </div>
               
-              <!-- Input para unit_value (CON EL TYPO INCLUIDO PARA QUE NO FALLE) -->
               <div class="mb-3">
-                  <label for="unit_value" class="form-label text-muted">Valor Unitario ($)</label>
-                  <input type="number" step="any" min="0" class="form-control bg-dark text-light border-secondary" id="unit_value" name="unit_value" placeholder="Ej: 60000.50" required>
+                  <label for="unit_value" class="form-label fw-semibold text-light">Valor Unitario de Compra ($)</label>
+                  <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="unit_value" name="unit_value" placeholder="Ej: 60000.50" required>
               </div>
 
-              <!-- Input para la Cantidad -->
-              <div class="mb-3">
-                  <label for="quantity_owned" class="form-label text-muted">Cantidad</label>
-                  <input type="number" step="any" min="0" class="form-control bg-dark text-light border-secondary" id="quantity_owned" name="quantity_owned" placeholder="Ej: 0.05" required>
+              <div class="mb-3">    
+                  <label for="quantity_owned" class="form-label fw-semibold text-light">Cantidad Comprada</label>
+                  <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="quantity_owned" name="quantity_owned" placeholder="Ej: 0.05" required>
               </div>
 
           </div>
           <div class="modal-footer border-secondary">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-success">Registrar</button>
+              <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-success fw-semibold">Confirmar Compra</button>
           </div>
       </form>
 
     </div>
   </div>
 </div>
-<!-- Pon esto justo ANTES de la etiqueta </body> -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Al cargar la página, leemos la memoria del navegador
+        const openAccordionId = sessionStorage.getItem("openAccordionId");
+        
+        if (openAccordionId) {
+            // Buscamos el panel del acordeón que guardamos
+            const targetPanel = document.getElementById(openAccordionId);
+            if (targetPanel) {
+                // Usamos la API nativa de Bootstrap para abrirlo sin animación
+                const bsCollapse = new bootstrap.Collapse(targetPanel, {
+                    toggle: false
+                });
+                bsCollapse.show();
+                
+                // Opcional: Hacer scroll suave hacia el elemento para que el usuario no se pierda
+                targetPanel.parentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // 2. Escuchamos los clics en los botones para guardar el estado
+        const accordionButtons = document.querySelectorAll('.accordion-button');
+        
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // El data-bs-target tiene el formato "#collapse-ID"
+                const targetId = this.getAttribute('data-bs-target').substring(1); 
+                const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                
+                if (isExpanded) {
+                    // Si lo abrió, guardamos el ID (ej: collapse-15)
+                    sessionStorage.setItem("openAccordionId", targetId);
+                } else {
+                    // Si lo cerró, limpiamos la memoria
+                    sessionStorage.removeItem("openAccordionId");
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

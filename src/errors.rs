@@ -1,4 +1,4 @@
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Redirect}; // <-- Asegúrate de importar Redirect
 use axum::http::StatusCode;
 use thiserror::Error;
 
@@ -28,24 +28,30 @@ pub enum AppError {
     Jwt(#[from] jwt_simple::Error),
 }
 
-//Ahora definimos como los errores se van a mostrar en la respuesta de la API, para eso implementamos la trait IntoResponse de axum, que nos permite convertir nuestro error en una respuesta HTTP
 #[derive(serde::Serialize)]
 pub struct ErrorResponse {
     pub error: String,
 }
 
 impl IntoResponse for AppError {
-    //para cada tipo de error, definimos el código de estado HTTP que queremos devolver, y el mensaje de error que queremos mostrar en la respuesta
     fn into_response(self) -> axum::response::Response {
+        // 1. Interceptamos los errores de sesión para que hagan una redirección HTTP clásica
+        match self {
+            Self::MissingAuthorization | Self::Unauthorized => {
+                // Al devolver un Redirect, el navegador cambia de página inmediatamente
+                return Redirect::to("/login").into_response();
+            }
+            _ => {} // Si no es un error de autorización, dejamos que siga al paso 2
+        };
+
+        // 2. Todo lo que NO sea un problema de sesión, se devuelve como JSON
         let error_response = ErrorResponse {
             error: self.to_string(),
         };
         
         let status = match self {
-            Self::MissingAuthorization => StatusCode::UNAUTHORIZED,
             Self::TokenCreationError => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
-            Self::Unauthorized => StatusCode::UNAUTHORIZED,
+            Self::InvalidCredentials => StatusCode::UNAUTHORIZED, // Quizás este lo quieras dejar como JSON para mostrar un mensaje en el modal de login
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
             Self::UserAlreadyExists => StatusCode::CONFLICT,
             Self::UserDoesNotExist => StatusCode::NOT_FOUND,
@@ -53,6 +59,9 @@ impl IntoResponse for AppError {
             Self::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Template(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::Jwt(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            // Los casos MissingAuthorization y Unauthorized ya no llegarán aquí, 
+            // pero Rust te exige cubrir todos los casos del enum, así que ponemos un fallback _
+            _ => StatusCode::INTERNAL_SERVER_ERROR, 
         };
 
         (status, axum::Json(error_response)).into_response()
