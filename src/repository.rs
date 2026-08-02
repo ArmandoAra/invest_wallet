@@ -10,6 +10,12 @@ pub struct Repository {
 }
 
 //Aqui definimos las funciones que van a interactuar con la base de datos, como por ejemplo crear, leer, actualizar y eliminar assets de la base de datos. Estas funciones van a ser llamadas desde las rutas, y van a recibir como parametro el estado de la aplicacion, para poder acceder a la conexion a la base de datos.
+impl From<PgPool> for Repository {
+    fn from(db: PgPool) -> Self {
+        Repository { db }
+    }
+}
+
 impl Repository {
     //Users
     //Nota: Vamos a recibir ya el hash , el repository no se va a encargar de hashear la contraseña, eso lo hace el handler de la ruta, para que el repository solo se encargue de interactuar con la base de datos y no tenga que preocuparse por la logica de negocio.
@@ -236,8 +242,127 @@ impl FromRequestParts<AppState> for Repository {
 }
 
 #[cfg(test)]
-impl From<PgPool> for Repository {
-    fn from(db: PgPool) -> Self {
-        Self { db }
+mod tests {
+    use super::*;
+    use sqlx::PgPool;
+
+    // =====================================================================
+    // TESTS DE USUARIOS
+    // =====================================================================
+
+    #[sqlx::test]
+    async fn test_insert_user_and_unique_violation(pool: PgPool) {
+        let repo = Repository::from(pool);
+
+        // 1. Inserción exitosa
+        let user = repo.insert_user_to_db("juan_perez", "hash_seguro").await.expect("Debería insertar el usuario");
+        assert_eq!(user.username, "juan_perez");
+        assert!(user.id > 0);
+
+        // 2. Violación de restricción UNIQUE (Mismo username)
+        let duplicate_result = repo.insert_user_to_db("juan_perez", "otro_hash").await;
+        
+        // Usamos matches! porque es probable que AppError no derive PartialEq
+        assert!(
+            matches!(duplicate_result, Err(crate::errors::AppError::UserAlreadyExists)),
+            "Debería haber fallado con UserAlreadyExists por el duplicado, pero devolvió: {:?}", 
+            duplicate_result
+        );
+    }
+
+    #[sqlx::test(fixtures("routes/fixtures/insert_user.sql"))]
+    async fn test_find_user_queries(pool: PgPool) {
+        let repo = Repository::from(pool);
+
+        // base_data.sql asume que insertó un usuario con id = 1 y username = 'testuser'
+        let user_by_id = repo.find_user_by_id(1).await.expect("Error SQL").expect("El usuario no existe");
+        assert_eq!(user_by_id.username, "testuser");
+
+        let user_by_name = repo.find_by_username("testuser").await.expect("Error SQL").expect("El usuario no existe");
+        assert_eq!(user_by_name.id, 1);
+    }
+
+    // =====================================================================
+    // TESTS DE ACTIVOS GLOBALES (ASSETS)
+    // =====================================================================
+
+    #[sqlx::test]
+    async fn test_crud_assets(pool: PgPool) {
+        let repo = Repository::from(pool);
+
+        // Crear
+        let new_asset = repo.insert_asset_to_db("Ethereum".to_string(), 3000.0).await.expect("Fallo al insertar asset");
+        assert_eq!(new_asset.name, "Ethereum");
+
+        // Leer
+        let assets = repo.list_assets_from_db().await.expect("Fallo al listar assets");
+        assert_eq!(assets.len(), 1);
+
+        // Actualizar
+        let updated = repo.update_asset_to_db(new_asset.id, Some("ETH".to_string()), Some(3200.0))
+            .await
+            .expect("Fallo SQL")
+            .expect("No retornó el asset actualizado");
+        assert_eq!(updated.name, "ETH");
+        assert_eq!(updated.unit_value, 3200.0);
+
+        // Eliminar
+        let deleted = repo.delete_asset_from_db(new_asset.id).await.expect("Fallo al eliminar");
+        assert!(deleted, "Debería retornar true al afectar filas");
+        
+        let empty_list = repo.list_assets_from_db().await.unwrap();
+        assert_eq!(empty_list.len(), 0);
+    }
+
+    // =====================================================================
+    // TESTS DE PORTAFOLIO DE USUARIO (OWNED ASSETS)
+    // =====================================================================
+
+    #[sqlx::test(fixtures("routes/fixtures/insert_owned_asset.sql"))]
+    async fn test_owned_assets_lifecycle(pool: PgPool) {
+        let repo = Repository::from(pool);
+        // User 1 y Asset 1 ya existen por el fixture base_data.sql
+
+        // 1. Insertar un par de compras del mismo activo
+        repo.insert_owned_asset_to_db(1, 1, 2.0, 40000.0).await.expect("Fallo compra 1");
+        repo.insert_owned_asset_to_db(1, 1, 0.5, 60000.0).await.expect("Fallo compra 2");
+
+        // 2. Probar la consulta compleja con JSON_AGG y matemáticas
+        let portfolio = repo.list_owned_assets_from_db(1).await.expect("Fallo al listar portafolio");
+        
+        assert_eq!(portfolio.len(), 1, "Debería agrupar las dos compras en un solo activo");
+        let my_bitcoin = &portfolio[0];
+        
+        assert_eq!(my_bitcoin.quantity_owned, 2.5); // 2.0 + 0.5
+        // Asset vale 50k en base_data.sql. 
+        // Compra 1: 2.0 * (50k - 40k) = +20,000
+        // Compra 2: 0.5 * (50k - 60k) = -5,000
+        // Total Delta: 15,000
+        assert_eq!(my_bitcoin.value_delta, 15000.0);
+        
+        // Verifica que el JSON se estructuró correctamente en el struct
+        assert_eq!(my_bitcoin.purchase_history.0.len(), 2, "Debe haber 2 historiales de compra");
+    }
+
+    #[sqlx::test(fixtures("routes/fixtures/update_owned_asset.sql"))]
+    async fn test_update_and_delete_history(pool: PgPool) {
+        let repo = Repository::from(pool.clone());
+        // owned_asset.sql asume un historial con id = 1 para el usuario = 1
+
+        // 1. Actualizar
+        let updated = repo.update_owned_asset_history_in_db(1, 1, 5.0, 10000.0).await.expect("Fallo al actualizar");
+        assert!(updated, "Debería haber modificado la fila");
+
+        // 2. Eliminar historial específico
+        let deleted_history = repo.delete_owned_asset_history_from_db(1, 1).await.expect("Fallo al eliminar historial");
+        assert!(deleted_history, "Debería haber eliminado el historial");
+
+        // Comprobar BD vacía
+        let count: i64 = sqlx::query_scalar!("SELECT COUNT(*) FROM owned_assets")
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+            .unwrap_or(0);
+        assert_eq!(count, 0);
     }
 }

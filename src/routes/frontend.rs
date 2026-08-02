@@ -209,7 +209,7 @@ pub async fn delete_owned_asset(
     repository
         .delete_owned_asset_from_db(user.user_id(), asset_id)
         .await
-        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
+        .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; 
 
     Ok(Redirect::to("/assets"))
 }
@@ -226,6 +226,7 @@ pub async fn delete_owned_asset_history(
 
     Ok(Redirect::to("/assets"))
 }
+
 pub mod filters {
     use askama;
     use time::{
@@ -247,17 +248,179 @@ pub mod filters {
 mod tests {
     use super::*;
     use sqlx::PgPool;
+    use axum::response::IntoResponse;
+    use axum::http::header::SET_COOKIE;
 
-    #[sqlx::test]
-    async fn create_user_and_authenticate(pool: PgPool)  {
-        let repository = Repository::from(pool);
-        //Esto va a comprobar que el usuario se puede crear y autenticar correctamente, y que se puede obtener el token de autenticacion el retorno de insert_user_to_db es Result<UserRecord, crate::errors::AppError>
-        let unauth_user = UnauthenticatedUser::new("testuser".to_string(), "testpassword".to_string());
-        match unauth_user.authenticate(&repository).await {
-            Ok(user) => user,
-            Err(AppError::UserDoesNotExist) => unauth_user.register(&repository).await.unwrap(),
-            Err(outher_error) => panic!("Unexpected error: {:?}", outher_error),
-        };
-       
+    // =====================================================================
+    // TESTS DE AUTENTICACIÓN
+    // =====================================================================
+
+#[sqlx::test]
+async fn test_login_creates_user_and_sets_cookie(pool: PgPool) {
+
+    unsafe {
+        std::env::set_var("ADMIN_SECRET_KEY", "supersecretkey_to_use_for_a_supersecret");
+    }
+
+    let repository = Repository::from(pool.clone());
+    let jar = CookieJar::new(); 
+    let form = Form(LoginForm {
+        username: "newuser".to_string(),
+        password: "testpassword".to_string(),
+    });
+
+    // Ejecutamos el handler. Si sigue fallando aquí, fíjate en el mensaje que imprimirá.
+    let response_result = login(repository, jar, form).await;
+    assert!(response_result.is_ok(), "El login falló con el error: {:?}", response_result.err());
+    
+    let response = response_result.unwrap().into_response();
+
+    // 2. SOLUCIÓN AL CÓDIGO DE ESTADO: 
+    // No busques un código específico, comprueba que se comporte como cualquier redirección.
+    assert!(
+        response.status().is_redirection(), 
+        "Se esperaba una redirección, pero devolvió el estado: {}", 
+        response.status()
+    );
+
+    // 3. SOLUCIÓN A LA CABECERA:
+    // Usamos la constante nativa y segura de HTTP
+    assert!(
+        response.headers().contains_key(SET_COOKIE),
+        "El login no devolvió la cabecera Set-Cookie. Cabeceras devueltas: {:?}",
+        response.headers()
+    );
+
+    // Verificamos la Base de Datos
+    let user_exists = sqlx::query!("SELECT id FROM users WHERE username = 'newuser'")
+        .fetch_optional(&pool)
+        .await
+        .unwrap();
+    
+    assert!(user_exists.is_some(), "El usuario no se guardó en la base de datos");
+}
+
+    use axum::http::HeaderMap;
+
+#[tokio::test]
+async fn test_logout_removes_cookie() {
+    // 1. Simulamos que el navegador envía la cookie en los headers de la petición HTTP
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        axum::http::header::COOKIE,
+        "token=fake_token_data".parse().unwrap(),
+    );
+    
+    // 2. Construimos el CookieJar a partir de los headers, tal como lo hace Axum al recibir un Request
+    let jar = CookieJar::from_headers(&headers);
+    
+    // 3. Ejecutamos el handler
+    let response = logout(jar).await.into_response();
+
+    // 4. Verificamos la redirección
+    assert_eq!(response.status(), axum::http::StatusCode::SEE_OTHER);
+    
+    // 5. Ahora la cabecera Set-Cookie SÍ debe existir, porque el sistema detecta que 
+    // está destruyendo una cookie preexistente y necesita avisarle al navegador.
+    let cookie_header = response.headers()
+        .get("set-cookie")
+        .expect("El handler no devolvió la cabecera Set-Cookie")
+        .to_str()
+        .unwrap();
+    
+    // 6. Verificamos que se esté borrando (Max-Age=0 o valor vacío/expirado)
+    assert!(cookie_header.contains("token="));
+    assert!(cookie_header.contains("Max-Age=0") || cookie_header.contains("Expires="));
+}
+    // =====================================================================
+    // TESTS DE CRUD DE PORTAFOLIO (ASSETS)
+    // =====================================================================
+
+    #[sqlx::test(fixtures("insert_owned_asset.sql"))]
+    async fn test_purchase_asset_handler(pool: PgPool) {
+        let repository = Repository::from(pool.clone());
+        let user = UserAuth::new(1, "testuser".to_string());
+        
+        let form = Form(PurchaseAssetForm {
+            asset_id: 1,
+            unit_value: 50000.0,
+            quantity_owned: 0.5,
+        });
+
+        // 1. Ejecutamos handler
+        let result = purchase_asset(repository, user, form).await;
+        assert!(result.is_ok(), "El handler de compra falló");
+
+        // 2. Verificamos BD (Única fuente de la verdad)
+        let saved_purchase = sqlx::query!(
+            "SELECT quantity_owned, bought_for FROM owned_assets WHERE user_id = 1 AND asset_id = 1"
+        )
+        .fetch_one(&pool)
+        .await
+        .expect("No se encontró el activo comprado en la DB");
+
+        assert_eq!(saved_purchase.quantity_owned, 0.5);
+        assert_eq!(saved_purchase.bought_for, 50000.0);
+    }
+
+    #[sqlx::test(fixtures("update_owned_asset.sql"))]
+    async fn test_update_owned_asset_history_handler(pool: PgPool) {
+        let repository = Repository::from(pool.clone());
+        let user = UserAuth::new(1, "testuser".to_string());
+        
+        // Simulamos que editamos el historial ID = 1
+        let path = Path(1);
+        let form = Form(UpdateHistoryForm {
+            bought_for: 30000.0,
+            quantity_bought: 2.0,
+        });
+
+        let result = update_owned_asset_history(repository, user, path, form).await;
+        assert!(result.is_ok(), "El handler de actualización falló");
+
+        let updated = sqlx::query!("SELECT bought_for, quantity_owned FROM owned_assets WHERE id = 1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(updated.bought_for, 30000.0);
+        assert_eq!(updated.quantity_owned, 2.0);
+    }
+
+    #[sqlx::test(fixtures("insert_owned_asset.sql"))]
+    async fn test_delete_owned_asset_history_handler(pool: PgPool) {
+        let repository = Repository::from(pool.clone());
+        let user = UserAuth::new(1, "testuser".to_string());
+        let path = Path(1); // history_id = 1
+
+        let result = delete_owned_asset_history(repository, user, path).await;
+        assert!(result.is_ok());
+
+        let deleted = sqlx::query!("SELECT id FROM owned_assets WHERE id = 1")
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+
+        assert!(deleted.is_none(), "El historial no se eliminó de la BD");
+    }
+
+    #[sqlx::test(fixtures("insert_owned_asset.sql"))]
+    async fn test_delete_entire_owned_asset_handler(pool: PgPool) {
+        let repository = Repository::from(pool.clone());
+        let user = UserAuth::new(1, "testuser".to_string());
+        let path = axum::extract::Path(1); // asset_id = 1
+
+        let result = delete_owned_asset(repository, user, path).await;
+        assert!(result.is_ok());
+
+        // Debe haber borrado todo lo relacionado a ese asset_id para ese usuario
+        let remaining = sqlx::query!(
+            "SELECT id FROM owned_assets WHERE user_id = 1 AND asset_id = 1"
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(remaining.len(), 0, "Aún quedan registros del activo en la BD");
     }
 }

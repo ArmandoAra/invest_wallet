@@ -91,7 +91,7 @@
                                     <tbody>
                                         {% for history in owned.purchase_history.0 %}
                                         <tr>
-                                            <td class="text-light">{{ history.bought_at }}</td>
+                                            <td class="text-light">{{ history.bought_at|format_human_readable_datetime }}</td>
                                             <td class="text-light">${{ history.bought_for }}</td>
                                             <td class="text-light">{{ history.quantity_bought }}</td>
                                             <td class="{% if history.value_delta >= 0.0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
