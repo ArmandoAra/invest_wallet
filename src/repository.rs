@@ -81,36 +81,46 @@ impl Repository {
     // Assets
     pub async fn list_assets_from_db(&self) -> sqlx::Result<Vec<Asset>> {
         //Aqui hacemos la consulta a la base de datos para obtener todos los assets, y los devolvemos como un vector de assets
-        let assets = sqlx::query_as!(Asset, "SELECT id, name, unit_value FROM assets;")
+        let assets = sqlx::query_as!(Asset, "SELECT id, name, unit_value, api_id FROM assets;")
             .fetch_all(&self.db)
             .await?;
         Ok(assets)
     }
 
-    pub async fn insert_asset_to_db(&self, name: String, unit_value: f64) -> sqlx::Result<Asset> {
-        let asset = sqlx::query_as!(
-            Asset,
-            "INSERT INTO assets (name, unit_value) VALUES ($1, $2) RETURNING id, name, unit_value;",
-            name,
-            unit_value
-        )
-        .fetch_one(&self.db)
-        .await?;
-        Ok(asset)
-    }
+    pub async fn insert_asset_to_db(
+    &self,
+    name: String,
+    unit_value: f64,
+    api_id: Option<String>, // <- Recibir el parámetro
+) -> sqlx::Result<Asset> {
+    let asset = sqlx::query_as!(
+        Asset,
+        // ¡Tienes que incluir api_id en el INSERT y en los VALUES ($3)!
+        "INSERT INTO assets (name, unit_value, api_id) VALUES ($1, $2, $3) RETURNING id, name, unit_value, api_id;",
+        name,
+        unit_value,
+        api_id
+    )
+    .fetch_one(&self.db)
+    .await?;
+    
+    Ok(asset)
+}
 
     pub async fn update_asset_to_db(
         &self,
         id: i64,
         name: Option<String>,
         unit_value: Option<f64>,
+        api_id: Option<String>,
     ) -> sqlx::Result<Option<Asset>> {
         let asset = sqlx::query_as!(
             Asset,
-            "UPDATE assets SET name = COALESCE($2, name), unit_value = COALESCE($3, unit_value) WHERE id = $1 RETURNING id, name, unit_value;",
+            "UPDATE assets SET name = COALESCE($2, name), unit_value = COALESCE($3, unit_value), api_id = COALESCE($4, api_id) WHERE id = $1 RETURNING id, name, unit_value, api_id;",
             id,
             name,
-            unit_value
+            unit_value,
+            api_id
         )
         .fetch_optional(&self.db)
         .await?;
@@ -291,7 +301,7 @@ mod tests {
         let repo = Repository::from(pool);
 
         // Crear
-        let new_asset = repo.insert_asset_to_db("Ethereum".to_string(), 3000.0).await.expect("Fallo al insertar asset");
+        let new_asset = repo.insert_asset_to_db("Ethereum".to_string(), 3000.0, Some("ethereum".to_string())).await.expect("Fallo al insertar asset");
         assert_eq!(new_asset.name, "Ethereum");
 
         // Leer
@@ -299,11 +309,11 @@ mod tests {
         assert_eq!(assets.len(), 1);
 
         // Actualizar
-        let updated = repo.update_asset_to_db(new_asset.id, Some("ETH".to_string()), Some(3200.0))
+        let updated = repo.update_asset_to_db(new_asset.id, Some("ethereum".to_string()), Some(3200.0), Some("ethereum".to_string()))
             .await
             .expect("Fallo SQL")
             .expect("No retornó el asset actualizado");
-        assert_eq!(updated.name, "ETH");
+        assert_eq!(updated.name, "Ethereum");
         assert_eq!(updated.unit_value, 3200.0);
 
         // Eliminar

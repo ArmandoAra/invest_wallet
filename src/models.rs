@@ -7,6 +7,7 @@ pub struct Asset {
     pub id: i64,
     pub name: String,
     pub unit_value: f64,
+    pub api_id: Option<String>,
 }
 
 //Modelo para la tabla users, que tiene id, username y password_hash
@@ -43,4 +44,11 @@ pub struct PurchaseAssetRequest {
     pub unit_value: f64,
     pub asset_id: i64,
     pub history_id: i64, // Agregamos un campo opcional para el history_id, que será usado para actualizar una compra específicas
+}
+
+// Este es el mensaje que viajará del Worker al Frontend
+#[derive(Clone, serde::Serialize, Debug)]
+pub struct PriceUpdate {
+    pub api_id: String,
+    pub unit_value: f64,
 }

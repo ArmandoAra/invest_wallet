@@ -54,6 +54,7 @@ async fn list_assets(
 pub struct CreateAssetRequest {
     name: String,
     unit_value: f64,
+    api_id: Option<String>,
 }
 
 // Endpoint que hace el registro de nuestros assets
@@ -64,7 +65,7 @@ pub async fn create_asset(
     Json(request): Json<CreateAssetRequest>,
 ) -> Result<Json<Asset>, AppError> {
     let asset = repository
-        .insert_asset_to_db(request.name, request.unit_value)
+        .insert_asset_to_db(request.name, request.unit_value, request.api_id)
         .await
         .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?; // Manejar el error adecuadamente en un caso real
 
@@ -77,6 +78,7 @@ pub struct UpdateAssetRequest {
     id: i64,
     name: Option<String>,
     unit_value: Option<f64>,
+    api_id: Option<String>,
 }
 
 #[tracing::instrument(skip_all)]
@@ -86,7 +88,7 @@ pub async fn update_asset(
     Json(request): Json<UpdateAssetRequest>,
 ) -> Result<Json<Option<Asset>>, AppError> {
     match repository
-        .update_asset_to_db(request.id, request.name, request.unit_value)
+        .update_asset_to_db(request.id, request.name, request.unit_value, request.api_id)
         .await
         .map_err(|_| AppError::DatabaseError(sqlx::Error::RowNotFound))?
     {
@@ -171,6 +173,7 @@ mod tests {
         let request = CreateAssetRequest {
             name: "Test Asset".to_string(),
             unit_value: 100.0,
+            api_id: Some("test_asset".to_string()),
         };
 
         let result = create_asset(AdminAuth, repository, Json(request)).await;
@@ -205,6 +208,7 @@ mod tests {
             id: 1,
             name: Some("Updated Bitcoin".to_string()),
             unit_value: Some(60000.0),
+            api_id: Some("bitcoin".to_string()),
         };
 
         let result = update_asset(AdminAuth, repository, Json(request)).await;

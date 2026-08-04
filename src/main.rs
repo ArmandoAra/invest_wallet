@@ -5,6 +5,8 @@ pub mod models;
 pub mod routes;
 pub mod errors;
 pub mod repository;
+pub mod workers;
+pub mod controllers;
 
 use crate::app::App;
 

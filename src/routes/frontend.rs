@@ -107,12 +107,12 @@ pub async fn index(jar: CookieJar) -> Result<impl IntoResponse, AppError> {
 #[derive(Template)]
 #[template(path = "assets.html")]
 pub struct AssetsPage {
-    owned_assets: Vec<OwnedAsset>,
-    available_assets: Vec<Asset>,
-    user: UserAuth,
+    pub owned_assets: Vec<OwnedAsset>,
+    pub available_assets: Vec<Asset>,
+    pub user: UserAuth,
     pub current_user: Option<String>,
-    portfolio_total: f64, 
-    portfolio_delta: f64, 
+    pub portfolio_total: f64, 
+    pub portfolio_delta: f64, 
 }
 
 pub async fn assets(repository: Repository, user: UserAuth) -> Result<Html<String>, AppError> {

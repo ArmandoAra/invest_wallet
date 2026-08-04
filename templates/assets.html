@@ -3,182 +3,436 @@
 {% block title %}Mi Portafolio | Invest Wallet{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    
-    <!-- Tarjeta de Bienvenida -->
-    <div class="card bg-dark text-light border-secondary shadow-sm mb-4">
-        <div class="card-body p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h3 class="mb-1 fw-bold text-white">Bienvenido, {{ user.username() }}</h3>
-                <p class="text-white-50 mb-0">Aquí puedes ver y gestionar tu portafolio de activos.</p>
-            </div>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+
+<style>
+    .wallet-dashboard {
+        --surface: #1a1d21;
+        --surface-raised: #202327;
+        --line: #2c3034;
+        --line-soft: #24272b;
+        --text-dim: #8b9096;
+        --accent-primary: #0d6efd;
+        --accent-success: #22c55e;
+        --accent-danger: #ef4565;
+        font-family: 'Inter', system-ui, sans-serif;
+        letter-spacing: -0.01em;
+    }
+    .wallet-dashboard .figure,
+    .wallet-dashboard .fig-num {
+        font-family: 'Sora', 'Inter', sans-serif;
+        font-variant-numeric: tabular-nums;
+    }
+    .wallet-dashboard .eyebrow {
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+    }
+
+    /* ---- Top header ---- */
+    .db-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+    }
+    .db-topbar h1 {
+        font-family: 'Sora', sans-serif;
+        font-weight: 700;
+        font-size: 1.65rem;
+        color: #fff;
+        margin: 0.15rem 0 0;
+    }
+    .live-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.75rem;
+        color: var(--accent-success);
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        padding: 0.3rem 0.65rem;
+        border-radius: 999px;
+        font-weight: 600;
+    }
+    .live-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--accent-success);
+        box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+        animation: pulse-dot 1.8s infinite;
+    }
+    @keyframes pulse-dot {
+        0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.55); }
+        70%  { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+        100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+
+    /* ---- KPI cards ---- */
+    .kpi-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 1.25rem 1.4rem;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    .kpi-card::before {
+        content: "";
+        position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: var(--bar-color, var(--accent-primary));
+        opacity: 0.9;
+    }
+    .kpi-card .fig-num {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.1;
+        margin-top: 0.35rem;
+    }
+    .kpi-card .fig-sub {
+        font-size: 0.78rem;
+        color: var(--text-dim);
+        margin-top: 0.35rem;
+    }
+
+    /* ---- Live ticker strip ---- */
+    .ticker-scroll {
+        display: flex;
+        gap: 0.75rem;
+        overflow-x: auto;
+        padding-bottom: 0.35rem;
+        scrollbar-width: thin;
+    }
+    .ticker-scroll::-webkit-scrollbar { height: 5px; }
+    .ticker-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
+    .ticker-card {
+        flex: 0 0 auto;
+        min-width: 168px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        transition: border-color .5s ease, background .5s ease;
+    }
+    .ticker-card .t-name {
+        display: flex; align-items: center; gap: 0.45rem;
+        font-size: 0.82rem; font-weight: 600; color: #e7e9ea;
+        margin-bottom: 0.5rem;
+    }
+    .ticker-card .t-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--accent-primary);
+        flex: 0 0 auto;
+    }
+    .ticker-card .t-price {
+        font-size: 1.05rem;
+        color: var(--accent-success);
+        font-weight: 700;
+    }
+    .ticker-card.flash-up   { border-color: rgba(34,197,94,.6); background: rgba(34,197,94,.06); }
+    .ticker-card.flash-down { border-color: rgba(239,69,101,.6); background: rgba(239,69,101,.06); }
+
+    /* ---- Section heading ---- */
+    .section-head {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 0.9rem;
+    }
+    .section-head h5 { color: #fff; font-weight: 700; margin: 0; font-family: 'Sora', sans-serif; font-size: 1.05rem; }
+
+    /* ---- Assets panel ---- */
+    .assets-panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .asset-row-header {
+        display: none;
+        padding: 0.7rem 1.25rem;
+        border-bottom: 1px solid var(--line);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+    }
+    @media (min-width: 768px) {
+        .asset-row-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 28px; gap: 0.5rem; }
+    }
+    .wallet-dashboard .accordion-item {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid var(--line-soft);
+    }
+    .wallet-dashboard .accordion-item:last-child { border-bottom: none; }
+    .wallet-dashboard .accordion-button {
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 1rem 1.25rem;
+    }
+    .wallet-dashboard .accordion-button:hover { background: var(--surface-raised) !important; }
+    .wallet-dashboard .accordion-button::after { filter: invert(1) grayscale(1) brightness(1.6); }
+    .asset-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        row-gap: 0.25rem;
+        width: 100%;
+    }
+    @media (min-width: 768px) {
+        .asset-grid { grid-template-columns: 2fr 1fr 1fr 1fr; align-items: center; column-gap: 0.5rem; row-gap: 0; }
+    }
+    .asset-grid .a-name { font-weight: 700; color: #fff; font-size: 0.98rem; }
+    .asset-grid .a-label { color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .asset-grid .a-val { color: #e7e9ea; font-weight: 600; }
+    @media (min-width: 768px) { .asset-grid .a-label { display: none; } }
+
+    .delta-chip {
+        display: inline-block;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+    }
+    .delta-chip.pos { color: var(--accent-success); background: rgba(34,197,94,.12); }
+    .delta-chip.neg { color: var(--accent-danger); background: rgba(239,69,101,.12); }
+
+    .wallet-dashboard .accordion-body {
+        background: var(--surface-raised);
+        border-top: 1px solid var(--line);
+        padding: 1.25rem;
+    }
+    .wallet-dashboard .table {
+        --bs-table-bg: transparent;
+        margin-bottom: 1.25rem;
+    }
+    .wallet-dashboard .table thead th {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-dim);
+        font-weight: 600;
+        border-bottom-color: var(--line);
+    }
+    .wallet-dashboard .table td { border-color: var(--line-soft); vertical-align: middle; font-size: 0.9rem; }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: var(--text-dim);
+    }
+    .empty-state i { font-size: 1.8rem; color: var(--line); display: block; margin-bottom: 0.75rem; }
+</style>
+
+<div class="wallet-dashboard container-xl py-4 py-md-5">
+
+    <!-- Barra superior -->
+    <div class="db-topbar">
+        <div>
+            <span class="eyebrow">Panel de inversión</span>
+            <h1>Hola, {{ user.username() }}</h1>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span class="live-pill"><span class="live-dot"></span> Mercado en vivo</span>
             <button type="button" class="btn btn-success fw-semibold" data-bs-toggle="modal" data-bs-target="#purchaseModal">
-                <i class="bi bi-plus-lg me-2"></i> Registrar Compra
+                <i class="bi bi-plus-lg me-2"></i>Registrar Compra
             </button>
         </div>
     </div>
 
-    <!-- NUEVO: Resumen Global de la Cartera -->
-    <div class="row mb-5">
-        <div class="col-md-6 mb-3 mb-md-0">
-            <div class="card bg-dark border-secondary h-100">
-                <div class="card-body p-4">
-                    <h6 class="text-white-50 text-uppercase letter-spacing-1 mb-2">Balance Total</h6>
-                    <h2 class="text-white fw-bold mb-0">
-                        <!-- Usamos el nuevo campo de Rust -->
-                        ${{ portfolio_total }}
-                    </h2>
-                </div>
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="kpi-card" style="--bar-color:#0d6efd">
+                <span class="eyebrow">Balance total</span>
+                <div class="fig-num">${{ portfolio_total }}</div>
+                <div class="fig-sub">Valor actual de tu cartera</div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card bg-dark border-secondary h-100">
-                <div class="card-body p-4">
-                    <h6 class="text-white-50 text-uppercase letter-spacing-1 mb-2">Rendimiento Histórico</h6>
-                    <h2 class="fw-bold mb-0 {% if portfolio_delta >= 0.0 %}text-success{% else %}text-danger{% endif %}">
-                        <!-- Usamos el nuevo campo de Rust y le damos color dinámico -->
-                        {% if portfolio_delta > 0.0 %}+{% endif %}${{ portfolio_delta }}
-                    </h2>
+        <div class="col-6 col-lg-3">
+            <div class="kpi-card" style="--bar-color: {% if portfolio_delta >= 0.0 %}#22c55e{% else %}#ef4565{% endif %}">
+                <span class="eyebrow">Rendimiento histórico</span>
+                <div class="fig-num {% if portfolio_delta >= 0.0 %}text-success{% else %}text-danger{% endif %}">
+                    {% if portfolio_delta > 0.0 %}+{% endif %}${{ portfolio_delta }}
                 </div>
+                <div class="fig-sub">Desde tu primera compra</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi-card" style="--bar-color:#8b5cf6">
+                <span class="eyebrow">Activos en cartera</span>
+                <div class="fig-num">{{ owned_assets.len() }}</div>
+                <div class="fig-sub">Posiciones abiertas</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi-card" style="--bar-color:#f59e0b">
+                <span class="eyebrow">Mercado disponible</span>
+                <div class="fig-num">{{ available_assets.len() }}</div>
+                <div class="fig-sub">Activos listados</div>
             </div>
         </div>
     </div>
 
-    <h4 class="mb-4 text-white"><i class="bi bi-wallet2 text-primary me-2"></i>Mis Activos</h4>
-
-    <!-- Lista de Activos (Acordeón de Bootstrap) -->
-    <div class="accordion shadow-sm" id="assetsAccordion">
-        {% if owned_assets.is_empty() %}
-            <div class="alert bg-dark border-secondary text-light text-center py-4 m-0">
-                No tienes activos registrados en tu portafolio. ¡Usa el botón de arriba para registrar uno!
-            </div>
-        {% else %}
-            {% for owned in owned_assets %}
-            <div class="accordion-item border-secondary bg-dark text-light">
-                <h2 class="accordion-header" id="heading-{{ owned.id }}">
-                    <button class="accordion-button collapsed bg-dark text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ owned.id }}" aria-expanded="false" aria-controls="collapse-{{ owned.id }}">
-                        
-                        <div class="d-flex w-100 justify-content-between align-items-center me-3">
-                            <strong class="mb-0 text-white" style="width: 25%;">{{ owned.name }}</strong>
-                            <span class="text-white-50 fw-semibold" style="width: 25%;">Qty Total: <span class="text-white">{{ owned.quantity_owned }}</span></span>
-                            <span class="text-white-50 fw-semibold" style="width: 25%;">Promedio: <span class="text-white">${{ owned.unit_value }}</span></span>
-                            <span class="{% if owned.value_delta >= 0.0 %}text-success{% else %}text-danger{% endif %} fw-bold" style="width: 25%; text-align: right;">
-                                {% if owned.value_delta > 0.0 %}+{% endif %}${{ owned.value_delta }}
-                            </span>
-                        </div>
-
-                    </button>
-                </h2>
-                <div id="collapse-{{ owned.id }}" class="accordion-collapse collapse bg-dark text-light" aria-labelledby="heading-{{ owned.id }}" data-bs-parent="#assetsAccordion">
-                    <div class="accordion-body border-top border-secondary">
-                        
-                        <h6 class="text-white-50 mb-3"><i class="bi bi-list-check me-2"></i>Desglose de Compras</h6>
-                        
-                        {% if owned.purchase_history.0.is_empty() %}
-                            <p class="text-white-50 small">No hay historial de compras detallado.</p>
-                        {% else %}
-                            <div class="table-responsive">
-                                <table class="table table-dark table-sm table-hover border-secondary align-middle mb-4">
-                                    <thead>
-                                        <tr>
-                                            <th class="text-white-50">Fecha</th>
-                                            <th class="text-white-50">Precio Compra</th>
-                                            <th class="text-white-50">Cantidad</th>
-                                            <th class="text-white-50">Rendimiento</th>
-                                            <th class="text-white-50 text-end">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for history in owned.purchase_history.0 %}
-                                        <tr>
-                                            <td class="text-light">{{ history.bought_at|format_human_readable_datetime }}</td>
-                                            <td class="text-light">${{ history.bought_for }}</td>
-                                            <td class="text-light">{{ history.quantity_bought }}</td>
-                                            <td class="{% if history.value_delta >= 0.0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
-                                                {% if history.value_delta > 0.0 %}+{% endif %}${{ history.value_delta }}
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="d-flex justify-content-end gap-2">
-                                                    <!-- Botón Editar Compra Individual (Asume que history tiene un .id) -->
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPurchaseModal-{{ history.id }}">
-                                                        <i class="bi bi-pencil-square"></i>
-                                                    </button>
-                                                    
-                                                    <!-- Botón Eliminar Compra Individual -->
-                                                    <form action="/assets/purchase/delete/{{ history.id }}" method="POST" onsubmit="return confirm('¿Eliminar esta compra específica?');">
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-
-                                        <!-- Modal para Editar esta compra en particular -->
-                                        <div class="modal fade" id="editPurchaseModal-{{ history.id }}" tabindex="-1" aria-hidden="true">
-                                          <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content bg-dark text-light border-secondary">
-                                              <div class="modal-header border-secondary">
-                                                <h5 class="modal-title">Editar Compra: {{ owned.name }}</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                              </div>
-                                              
-                                              <!-- Acción que apunta al ID único de esta compra -->
-                                              <form action="/assets/purchase/update/{{ history.id }}" method="POST">
-                                                  <div class="modal-body text-start">
-                                                      <div class="mb-3">
-                                                          <label for="edit_bought_for_{{ history.id }}" class="form-label fw-semibold text-light">Precio de Compra ($)</label>
-                                                          <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_bought_for_{{ history.id }}" name="bought_for" value="{{ history.bought_for }}" required>
-                                                      </div>
-                                                      <div class="mb-3">    
-                                                          <label for="edit_quantity_{{ history.id }}" class="form-label fw-semibold text-light">Cantidad Comprada</label>
-                                                          <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_quantity_{{ history.id }}" name="quantity_bought" value="{{ history.quantity_bought }}" required>
-                                                      </div>
-                                                  </div>
-                                                  <div class="modal-footer border-secondary">
-                                                      <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
-                                                      <button type="submit" class="btn btn-primary fw-semibold">Guardar Cambios</button>
-                                                  </div>
-                                              </form>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <!-- Fin Modal Editar Compra -->
-
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% endif %}
-
-                        <!-- Mantenemos el botón de eliminar TODO el activo por si quieren limpiar el portafolio -->
-                        <div class="d-flex justify-content-end border-top border-secondary pt-3 mt-3">
-                            <form action="/assets/delete/{{ owned.id }}" method="POST" onsubmit="return confirm('ATENCIÓN: Esto eliminará TODAS las compras de {{ owned.name }}. ¿Continuar?');">
-                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill me-1"></i> Eliminar Todo el Activo</button>
-                            </form>
-                        </div>
-
-                    </div>
-                </div>
+    <!-- Ticker de precios en vivo -->
+    <div class="mb-4">
+        <div class="section-head">
+            <h5><i class="bi bi-activity text-primary me-2"></i>Precios en vivo</h5>
+        </div>
+        <div class="ticker-scroll">
+            {% for asset in available_assets %}
+            <div class="ticker-card" id="ticker-{{ asset.api_id.clone().unwrap_or_default() }}">
+                <div class="t-name"><span class="t-dot"></span>{{ asset.name }}</div>
+                <span id="price-{{ asset.api_id.clone().unwrap_or_default() }}" class="t-price">
+                    ${{ asset.unit_value }}
+                </span>
             </div>
             {% endfor %}
+        </div>
+    </div>
+
+    <!-- Mis activos -->
+    <div class="section-head">
+        <h5><i class="bi bi-wallet2 text-primary me-2"></i>Mis Activos</h5>
+    </div>
+
+    <div class="assets-panel mb-5">
+        {% if owned_assets.is_empty() %}
+            <div class="empty-state">
+                <i class="bi bi-inboxes"></i>
+                No tienes activos registrados en tu portafolio.<br>Usa "Registrar Compra" para añadir el primero.
+            </div>
+        {% else %}
+            <div class="asset-row-header">
+                <span>Activo</span>
+                <span>Cantidad total</span>
+                <span>Precio promedio</span>
+                <span>Rendimiento</span>
+                <span></span>
+            </div>
+            <div class="accordion" id="assetsAccordion">
+                {% for owned in owned_assets %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-{{ owned.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ owned.id }}" aria-expanded="false" aria-controls="collapse-{{ owned.id }}">
+                            <div class="asset-grid">
+                                <span class="a-name">{{ owned.name }}</span>
+                                <span><span class="a-label">Cantidad total</span><span class="a-val">{{ owned.quantity_owned }}</span></span>
+                                <span><span class="a-label">Promedio</span><span class="a-val">${{ owned.unit_value }}</span></span>
+                                <span>
+                                    <span class="a-label">Rendimiento</span>
+                                    <span class="delta-chip {% if owned.value_delta >= 0.0 %}pos{% else %}neg{% endif %}">
+                                        {% if owned.value_delta > 0.0 %}+{% endif %}${{ owned.value_delta }}
+                                    </span>
+                                </span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapse-{{ owned.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ owned.id }}" data-bs-parent="#assetsAccordion">
+                        <div class="accordion-body">
+                            <h6 class="text-white-50 mb-3"><i class="bi bi-list-check me-2"></i>Desglose de Compras</h6>
+
+                            {% if owned.purchase_history.0.is_empty() %}
+                                <p class="text-white-50 small">No hay historial de compras detallado.</p>
+                            {% else %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-4">
+                                        <thead>
+                                            <tr>
+                                                <th>Fecha</th>
+                                                <th>Precio Compra</th>
+                                                <th>Cantidad</th>
+                                                <th>Rendimiento</th>
+                                                <th class="text-end">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for history in owned.purchase_history.0 %}
+                                            <tr>
+                                                <td class="text-light">{{ history.bought_at|format_human_readable_datetime }}</td>
+                                                <td class="text-light">${{ history.bought_for }}</td>
+                                                <td class="text-light">{{ history.quantity_bought }}</td>
+                                                <td>
+                                                    <span class="delta-chip {% if history.value_delta >= 0.0 %}pos{% else %}neg{% endif %}">
+                                                        {% if history.value_delta > 0.0 %}+{% endif %}${{ history.value_delta }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="d-flex justify-content-end gap-2">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPurchaseModal-{{ history.id }}">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                        <form action="/assets/purchase/delete/{{ history.id }}" method="POST" onsubmit="return confirm('¿Eliminar esta compra específica?');">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <div class="modal fade" id="editPurchaseModal-{{ history.id }}" tabindex="-1" aria-hidden="true">
+                                              <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content bg-dark text-light border-secondary">
+                                                  <div class="modal-header border-secondary">
+                                                    <h5 class="modal-title">Editar Compra: {{ owned.name }}</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                  </div>
+                                                  <form action="/assets/purchase/update/{{ history.id }}" method="POST">
+                                                      <div class="modal-body text-start">
+                                                          <div class="mb-3">
+                                                              <label for="edit_bought_for_{{ history.id }}" class="form-label fw-semibold text-light">Precio de Compra ($)</label>
+                                                              <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_bought_for_{{ history.id }}" name="bought_for" value="{{ history.bought_for }}" required>
+                                                          </div>
+                                                          <div class="mb-3">
+                                                              <label for="edit_quantity_{{ history.id }}" class="form-label fw-semibold text-light">Cantidad Comprada</label>
+                                                              <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_quantity_{{ history.id }}" name="quantity_bought" value="{{ history.quantity_bought }}" required>
+                                                          </div>
+                                                      </div>
+                                                      <div class="modal-footer border-secondary">
+                                                          <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
+                                                          <button type="submit" class="btn btn-primary fw-semibold">Guardar Cambios</button>
+                                                      </div>
+                                                  </form>
+                                                </div>
+                                              </div>
+                                            </div>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+
+                            <div class="d-flex justify-content-end border-top border-secondary pt-3 mt-3">
+                                <form action="/assets/delete/{{ owned.id }}" method="POST" onsubmit="return confirm('ATENCIÓN: Esto eliminará TODAS las compras de {{ owned.name }}. ¿Continuar?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill me-1"></i> Eliminar Todo el Activo</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         {% endif %}
     </div>
 </div>
 
-<!-- Modal para Registrar Compra NUEVA (Popup general) -->
+<!-- Modal para Registrar Compra NUEVA -->
 <div class="modal fade" id="purchaseModal" tabindex="-1" aria-labelledby="purchaseModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-dark text-light border-secondary">
-      
       <div class="modal-header border-secondary">
         <h5 class="modal-title text-white fw-bold" id="purchaseModalLabel">Registrar Nueva Compra</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      
       <form action="/assets" method="POST">
           <div class="modal-body">
-              
               <div class="mb-3">
                   <label for="asset_id" class="form-label fw-semibold text-light">Selecciona el Activo</label>
                   <select class="form-select bg-dark text-white border-secondary" id="asset_id" name="asset_id" required>
@@ -188,24 +442,20 @@
                       {% endfor %}
                   </select>
               </div>
-              
               <div class="mb-3">
                   <label for="unit_value" class="form-label fw-semibold text-light">Valor Unitario de Compra ($)</label>
                   <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="unit_value" name="unit_value" placeholder="Ej: 60000.50" required>
               </div>
-
-              <div class="mb-3">    
+              <div class="mb-3">
                   <label for="quantity_owned" class="form-label fw-semibold text-light">Cantidad Comprada</label>
                   <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="quantity_owned" name="quantity_owned" placeholder="Ej: 0.05" required>
               </div>
-
           </div>
           <div class="modal-footer border-secondary">
               <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
               <button type="submit" class="btn btn-success fw-semibold">Confirmar Compra</button>
           </div>
       </form>
-
     </div>
   </div>
 </div>
@@ -216,40 +466,57 @@
     document.addEventListener("DOMContentLoaded", function() {
         // 1. Al cargar la página, leemos la memoria del navegador
         const openAccordionId = sessionStorage.getItem("openAccordionId");
-        
+
         if (openAccordionId) {
-            // Buscamos el panel del acordeón que guardamos
             const targetPanel = document.getElementById(openAccordionId);
             if (targetPanel) {
-                // Usamos la API nativa de Bootstrap para abrirlo sin animación
-                const bsCollapse = new bootstrap.Collapse(targetPanel, {
-                    toggle: false
-                });
+                const bsCollapse = new bootstrap.Collapse(targetPanel, { toggle: false });
                 bsCollapse.show();
-                
-                // Opcional: Hacer scroll suave hacia el elemento para que el usuario no se pierda
                 targetPanel.parentElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
 
         // 2. Escuchamos los clics en los botones para guardar el estado
         const accordionButtons = document.querySelectorAll('.accordion-button');
-        
         accordionButtons.forEach(button => {
             button.addEventListener('click', function() {
-                // El data-bs-target tiene el formato "#collapse-ID"
-                const targetId = this.getAttribute('data-bs-target').substring(1); 
+                const targetId = this.getAttribute('data-bs-target').substring(1);
                 const isExpanded = this.getAttribute('aria-expanded') === 'true';
-                
                 if (isExpanded) {
-                    // Si lo abrió, guardamos el ID (ej: collapse-15)
                     sessionStorage.setItem("openAccordionId", targetId);
                 } else {
-                    // Si lo cerró, limpiamos la memoria
                     sessionStorage.removeItem("openAccordionId");
                 }
             });
         });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // Nos conectamos a la ruta SSE que creamos en Axum
+        const evtSource = new EventSource("/api/sse/prices");
+
+        evtSource.addEventListener("price_update", function(event) {
+            const data = JSON.parse(event.data);
+            const priceCell = document.getElementById("price-" + data.api_id);
+
+            if (priceCell) {
+                const prevRaw = parseFloat(priceCell.dataset.raw || priceCell.innerText.replace(/[$,]/g, ''));
+                priceCell.innerText = "$" + data.unit_value.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                priceCell.dataset.raw = data.unit_value;
+
+                const card = document.getElementById("ticker-" + data.api_id);
+                if (card && !isNaN(prevRaw)) {
+                    card.classList.remove('flash-up', 'flash-down');
+                    void card.offsetWidth; // reinicia la animación
+                    card.classList.add(data.unit_value >= prevRaw ? 'flash-up' : 'flash-down');
+                    setTimeout(() => card.classList.remove('flash-up', 'flash-down'), 900);
+                }
+            }
+        });
+
+        evtSource.onerror = function(err) {
+            console.error("SSE Error - Perdimos conexión con los precios en vivo.");
+        };
     });
 </script>
 {% endblock %}
