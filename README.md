@@ -2,7 +2,7 @@
 
 # 💰 Invest Wallet
 
-**Plataforma web fullstack para gestão inteligente de portfólio e finanças pessoais**
+**Plataforma web fullstack para gestão de investimentos**
 
 ![Rust](https://img.shields.io/badge/Rust-2024-orange?logo=rust&logoColor=white)
 ![Axum](https://img.shields.io/badge/Axum-Web%20Framework-black)
