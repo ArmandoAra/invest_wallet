@@ -112,30 +112,45 @@ pub struct AssetsPage {
     pub user: UserAuth,
     pub current_user: Option<String>,
     pub portfolio_total: f64, 
-    pub portfolio_delta: f64, 
+    pub portfolio_delta: f64,
+    pub chart_labels: String, // ¡Nuevo!
+    pub chart_values: String, // ¡Nuevo!
 }
 
 pub async fn assets(repository: Repository, user: UserAuth) -> Result<Html<String>, AppError> {
-    //Usamos tokio::try_join! para ejecutar las dos consultas a la base de datos en paralelo, y asi optimizar el tiempo de respuesta, ya que no necesitamos que una consulta termine para empezar la otra, y axum se encargara de inyectar la dependencia automaticamente, para eso implementamos el trait FromRequestParts para Repository, y le decimos que el estado de la aplicacion es AppState, y que se inicializa con   AppState::new()
+    
     let (owned_assets, available_assets) = tokio::try_join!(
         repository.list_owned_assets_from_db(user.user_id()),
-        repository.list_assets_from_db()
+        repository.list_assets_from_db(),
     )?;
 
     let user_name = user.username().clone();
 
-    let portfolio_total: f64 = owned_assets
-        .iter()
-        .map(|a| a.quantity_owned * a.unit_value)
-        .sum();
+    // 1. Preparamos las variables para los cálculos
+    let mut portfolio_total: f64 = 0.0;
+    let mut portfolio_delta: f64 = 0.0;
+    
+    let mut labels = Vec::new();
+    let mut values = Vec::new();
 
-    // Delta = suma de todas las ganancias/pérdidas
-    let portfolio_delta: f64 = owned_assets
-        .iter()
-        .map(|a| a.value_delta)
-        .sum();
+    // 2. Un solo bucle para calcular TODO (totales y datos del gráfico)
+    for asset in &owned_assets {
+        let asset_total = asset.quantity_owned * asset.unit_value;
+        
+        // Sumatorias para la página
+        portfolio_total += asset_total;
+        portfolio_delta += asset.value_delta;
 
-    // Renderizamos manualmente a un String y lo envolvemos en Html, de haber un error, redireccionamos a home
+        // Datos para el gráfico (asumo que tu struct tiene un campo `name`)
+        labels.push(asset.name.clone());
+        values.push(asset_total);
+    }
+
+    // 3. Serializamos los vectores a JSON strings de forma segura
+    let chart_labels = serde_json::to_string(&labels).unwrap_or_else(|_| "[]".to_string());
+    let chart_values = serde_json::to_string(&values).unwrap_or_else(|_| "[]".to_string());
+
+    // 4. Se los pasamos a tu template de Askama
     let page = AssetsPage {
         owned_assets,
         available_assets,
@@ -143,6 +158,8 @@ pub async fn assets(repository: Repository, user: UserAuth) -> Result<Html<Strin
         current_user: Some(user_name),
         portfolio_total,
         portfolio_delta,
+        chart_labels, // ¡Nuevo!
+        chart_values, // ¡Nuevo!
     }
     .render()
     .map_err(AppError::Template)?;
@@ -241,6 +258,11 @@ pub mod filters {
         const HUMAN_READABLE_FORMAT : StaticFormatDescription =
             format_description!(version = 2, "[year]-[month]-[day] [hour]:[minute]:[second]");
         datetime.format(&HUMAN_READABLE_FORMAT).map_err(|e| askama::Error::custom(e))
+    }
+
+    #[askama::filter_fn]
+    pub fn format_currency(value: &f64, _env: &dyn askama::Values) -> askama::Result<String> {
+        Ok(format!("${:.2}", value))
     }
 }
 

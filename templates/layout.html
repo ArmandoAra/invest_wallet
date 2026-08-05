@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,13 +27,6 @@
             padding: 1rem 0;
         }
 
-        .navbar-brand {
-            color: #ffffff !important;
-            font-weight: 300;
-            letter-spacing: -0.5px;
-            font-size: 1.25rem;
-        }
-
         .nav-link-minimal {
             color: #64748b;
             font-size: 0.875rem;
@@ -57,6 +50,14 @@
             align-items: center;
         }
 
+        /* titulo  moderno*/
+        .navbar-brand {
+            color: #ffffff !important;
+            font-weight: 200;
+            letter-spacing: 2px;
+            font-size: 1.25rem;
+        }
+
         /* El main ocupa el espacio restante empujando el footer si hubiera */
         main {
             flex: 1;
@@ -69,7 +70,7 @@
     
     <nav class="navbar navbar-minimal navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="/">Invest Wallet</a>
+            <a class="navbar-brand" href="/">INVEST WALLET</a>
             
             <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <i class="bi bi-list text-light fs-2"></i>
@@ -77,18 +78,14 @@
             
             <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
                 <div class="d-flex align-items-center mt-3 mt-lg-0">
-                    <!-- 
-                        CONDICIONAL ASKAMA:
-                        Requiere que todos tus structs tengan `pub current_user: Option<String>`
-                    -->
                     {% if let Some(username) = current_user %}
                         <span class="user-greeting">
                             <i class="bi bi-person-circle text-primary me-2 fs-5"></i> 
                             {{ username }}
                         </span>
-                        <a href="/logout" method="get"  class="nav-link-minimal">Salir <i class="bi bi-box-arrow-right ms-1"></i></a>
+                        <a href="/logout" method="get"  class="nav-link-minimal">Sair<i class="bi bi-box-arrow-right ms-1"></i></a>
                     {% else %}
-                        <a href="/login" class="nav-link-minimal">Login</a>
+                        <a href="/login" class="nav-link-minimal">Entrar</a>
                     {% endif %}
                 </div>
             </div>

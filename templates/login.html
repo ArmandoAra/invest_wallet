@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}Iniciar Sesión | Invest Wallet{% endblock %}
+{% block title %}Entrar | Invest Wallet{% endblock %}
 
 {% block head %}
 <style>
@@ -125,16 +125,16 @@
         <form action="/login" method="POST" novalidate>
             
             <div class="input-group-minimal">
-                <label for="username" class="label-minimal">Usuario</label>
+                <label for="username" class="label-minimal">Usuário</label>
                 <input type="text" id="username" name="username" class="form-control-minimal" required aria-required="true" autocomplete="username">
             </div>
             
             <div class="input-group-minimal">
-                <label for="password" class="label-minimal">Contraseña</label>
+                <label for="password" class="label-minimal">Senha</label>
                 <input type="password" id="password" name="password" class="form-control-minimal" required aria-required="true" autocomplete="current-password">
             </div>
 
-            <button class="btn btn-minimal mt-3 mb-5" type="submit">Ingresar</button>
+            <button class="btn btn-minimal mt-3 mb-5" type="submit">Entrar</button>
         </form>
     </div>
 </div>

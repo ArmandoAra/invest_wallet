@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 
-{% block title %}Mi Portafolio | Invest Wallet{% endblock %}
+{% block title %}Meu Portfólio | Invest Wallet{% endblock %}
 
 {% block content %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +26,8 @@
         font-variant-numeric: tabular-nums;
     }
     .wallet-dashboard .eyebrow {
-        font-size: 0.7rem;
+        /* Uso de clamp para adaptar el texto en pantallas pequeñas */
+        font-size: clamp(0.6rem, 1.5vw, 0.7rem);
         font-weight: 600;
         letter-spacing: 0.14em;
         text-transform: uppercase;
@@ -78,10 +79,13 @@
         background: var(--surface);
         border: 1px solid var(--line);
         border-radius: 14px;
-        padding: 1.25rem 1.4rem;
+        padding: 1.25rem 1rem; /* Padding ligeramente reducido para mejor encaje */
         height: 100%;
         position: relative;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     .kpi-card::before {
         content: "";
@@ -90,16 +94,19 @@
         opacity: 0.9;
     }
     .kpi-card .fig-num {
-        font-size: 1.6rem;
+        /* Clamp evita el desbordamiento haciendo la fuente elástica */
+        font-size: clamp(1.1rem, 2vw, 1.6rem);
         font-weight: 700;
         color: #fff;
-        line-height: 1.1;
+        line-height: 1.2;
         margin-top: 0.35rem;
+        word-break: break-word; /* Si el número es gigante, lo parte antes de romper el div */
     }
     .kpi-card .fig-sub {
-        font-size: 0.78rem;
+        font-size: clamp(0.7rem, 1.5vw, 0.78rem);
         color: var(--text-dim);
         margin-top: 0.35rem;
+        line-height: 1.3;
     }
 
     /* ---- Live ticker strip ---- */
@@ -235,62 +242,91 @@
     <!-- Barra superior -->
     <div class="db-topbar">
         <div>
-            <span class="eyebrow">Panel de inversión</span>
-            <h1>Hola, {{ user.username() }}</h1>
+            <span class="eyebrow">Painel de Investimento</span>
+            <h1>Olá, {{ user.username() }}</h1>
         </div>
         <div class="d-flex align-items-center gap-3">
-            <span class="live-pill"><span class="live-dot"></span> Mercado en vivo</span>
+            <span class="live-pill"><span class="live-dot"></span> Mercado ao vivo</span>
             <button type="button" class="btn btn-success fw-semibold" data-bs-toggle="modal" data-bs-target="#purchaseModal">
                 <i class="bi bi-plus-lg me-2"></i>Registrar Compra
             </button>
         </div>
     </div>
 
-    <!-- KPIs -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
-            <div class="kpi-card" style="--bar-color:#0d6efd">
-                <span class="eyebrow">Balance total</span>
-                <div class="fig-num">${{ portfolio_total }}</div>
-                <div class="fig-sub">Valor actual de tu cartera</div>
-            </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <div class="kpi-card" style="--bar-color: {% if portfolio_delta >= 0.0 %}#22c55e{% else %}#ef4565{% endif %}">
-                <span class="eyebrow">Rendimiento histórico</span>
-                <div class="fig-num {% if portfolio_delta >= 0.0 %}text-success{% else %}text-danger{% endif %}">
-                    {% if portfolio_delta > 0.0 %}+{% endif %}${{ portfolio_delta }}
+    <!-- Layout Dividido: KPIs (Izquierda) + Gráfico (Derecha) -->
+    <div class="row g-4 mb-5 align-items-stretch">
+        
+        <!-- KPIs 2x2 -->
+        <div class="col-12 col-lg-7 col-xl-8">
+            <div class="row g-3 h-100">
+                <div class="col-6">
+                    <div class="kpi-card" style="--bar-color:#0d6efd">
+                        <span class="eyebrow">Saldo Total</span>
+                        <div class="fig-num">{{ portfolio_total | format_currency }}</div>
+                        <div class="fig-sub">Valor atual da sua carteira</div>
+                    </div>
                 </div>
-                <div class="fig-sub">Desde tu primera compra</div>
+                <div class="col-6">
+                    <div class="kpi-card" style="--bar-color: {% if portfolio_delta >= 0.0 %}#22c55e{% else %}#ef4565{% endif %}">
+                        <span class="eyebrow">Rendimento Histórico</span>
+                        <div class="fig-num {% if portfolio_delta >= 0.0 %}text-success{% else %}text-danger{% endif %}">
+                            {% if portfolio_delta > 0.0 %}+{% endif %}{{ portfolio_delta | format_currency }}
+                        </div>
+                        <div class="fig-sub">Desde a sua primeira compra</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="kpi-card" style="--bar-color:#8b5cf6">
+                        <span class="eyebrow">Ativos na Carteira</span>
+                        <div class="fig-num">{{ owned_assets.len() }}</div>
+                        <div class="fig-sub">Posições abertas</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="kpi-card" style="--bar-color:#f59e0b">
+                        <span class="eyebrow">Mercado Disponível</span>
+                        <div class="fig-num">{{ available_assets.len() }}</div>
+                        <div class="fig-sub">Ativos listados</div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="kpi-card" style="--bar-color:#8b5cf6">
-                <span class="eyebrow">Activos en cartera</span>
-                <div class="fig-num">{{ owned_assets.len() }}</div>
-                <div class="fig-sub">Posiciones abiertas</div>
+
+        <!-- Gráfico -->
+        <div class="col-12 col-lg-5 col-xl-4">
+            <div class="card bg-dark border-secondary shadow-sm h-100 d-flex flex-column">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-title text-light mb-4 text-center" style="font-family: 'Sora', sans-serif; font-size: 1.05rem;">Distribuição do Portfólio</h5>
+                    
+                    <div class="position-relative d-flex justify-content-center align-items-center flex-grow-1" style="min-height: 250px;">
+                        <canvas id="portfolioChart" style="z-index: 2;"></canvas>
+                        
+                        <!-- Texto flotante en el centro de la dona -->
+                        <div class="position-absolute text-center w-75" style="z-index: 1;">
+                            <span class="d-block text-muted" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Total Líquido</span>
+                            <!-- Tamaño de fuente fluido para evitar que rompa la dona -->
+                            <span class="text-white fw-bold" style="font-size: clamp(1rem, 2.5vw, 1.75rem); word-break: break-all;">
+                                {{ portfolio_total | format_currency }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="kpi-card" style="--bar-color:#f59e0b">
-                <span class="eyebrow">Mercado disponible</span>
-                <div class="fig-num">{{ available_assets.len() }}</div>
-                <div class="fig-sub">Activos listados</div>
-            </div>
-        </div>
+        
     </div>
 
     <!-- Ticker de precios en vivo -->
     <div class="mb-4">
         <div class="section-head">
-            <h5><i class="bi bi-activity text-primary me-2"></i>Precios en vivo</h5>
+            <h5><i class="bi bi-activity text-primary me-2"></i>Preços ao Vivo</h5>
         </div>
         <div class="ticker-scroll">
             {% for asset in available_assets %}
             <div class="ticker-card" id="ticker-{{ asset.api_id.clone().unwrap_or_default() }}">
                 <div class="t-name"><span class="t-dot"></span>{{ asset.name }}</div>
                 <span id="price-{{ asset.api_id.clone().unwrap_or_default() }}" class="t-price">
-                    ${{ asset.unit_value }}
+                    {{ asset.unit_value | format_currency }}
                 </span>
             </div>
             {% endfor %}
@@ -299,21 +335,21 @@
 
     <!-- Mis activos -->
     <div class="section-head">
-        <h5><i class="bi bi-wallet2 text-primary me-2"></i>Mis Activos</h5>
+        <h5><i class="bi bi-wallet2 text-primary me-2"></i>Meus Ativos</h5>
     </div>
 
     <div class="assets-panel mb-5">
         {% if owned_assets.is_empty() %}
             <div class="empty-state">
                 <i class="bi bi-inboxes"></i>
-                No tienes activos registrados en tu portafolio.<br>Usa "Registrar Compra" para añadir el primero.
+                Você não possui ativos registrados no seu portfólio.<br>Use "Registrar Compra" para adicionar o primeiro.
             </div>
         {% else %}
             <div class="asset-row-header">
-                <span>Activo</span>
-                <span>Cantidad total</span>
-                <span>Precio promedio</span>
-                <span>Rendimiento</span>
+                <span>Ativo</span>
+                <span>Quantidade Total</span>
+                <span>Preço Médio</span>
+                <span>Rendimento</span>
                 <span></span>
             </div>
             <div class="accordion" id="assetsAccordion">
@@ -323,12 +359,12 @@
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ owned.id }}" aria-expanded="false" aria-controls="collapse-{{ owned.id }}">
                             <div class="asset-grid">
                                 <span class="a-name">{{ owned.name }}</span>
-                                <span><span class="a-label">Cantidad total</span><span class="a-val">{{ owned.quantity_owned }}</span></span>
-                                <span><span class="a-label">Promedio</span><span class="a-val">${{ owned.unit_value }}</span></span>
+                                <span><span class="a-label">Quantidade Total</span><span class="a-val">{{ owned.quantity_owned }}</span></span>
+                                <span><span class="a-label">Médio</span><span class="a-val">{{ owned.unit_value | format_currency }}</span></span>
                                 <span>
-                                    <span class="a-label">Rendimiento</span>
+                                    <span class="a-label">Rendimento</span>
                                     <span class="delta-chip {% if owned.value_delta >= 0.0 %}pos{% else %}neg{% endif %}">
-                                        {% if owned.value_delta > 0.0 %}+{% endif %}${{ owned.value_delta }}
+                                        {% if owned.value_delta > 0.0 %}+{% endif %}{{ owned.value_delta | format_currency }}
                                     </span>
                                 </span>
                             </div>
@@ -336,31 +372,31 @@
                     </h2>
                     <div id="collapse-{{ owned.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ owned.id }}" data-bs-parent="#assetsAccordion">
                         <div class="accordion-body">
-                            <h6 class="text-white-50 mb-3"><i class="bi bi-list-check me-2"></i>Desglose de Compras</h6>
+                            <h6 class="text-white-50 mb-3"><i class="bi bi-list-check me-2"></i>Detalhamento de Compras</h6>
 
                             {% if owned.purchase_history.0.is_empty() %}
-                                <p class="text-white-50 small">No hay historial de compras detallado.</p>
+                                <p class="text-white-50 small">Não há histórico de compras detalhado.</p>
                             {% else %}
                                 <div class="table-responsive">
                                     <table class="table table-sm align-middle mb-4">
                                         <thead>
                                             <tr>
-                                                <th>Fecha</th>
-                                                <th>Precio Compra</th>
-                                                <th>Cantidad</th>
-                                                <th>Rendimiento</th>
-                                                <th class="text-end">Acciones</th>
+                                                <th>Data</th>
+                                                <th>Preço de Compra</th>
+                                                <th>Quantidade</th>
+                                                <th>Rendimento</th>
+                                                <th class="text-end">Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for history in owned.purchase_history.0 %}
                                             <tr>
                                                 <td class="text-light">{{ history.bought_at|format_human_readable_datetime }}</td>
-                                                <td class="text-light">${{ history.bought_for }}</td>
+                                                <td class="text-light">{{ history.bought_for | format_currency }}</td>
                                                 <td class="text-light">{{ history.quantity_bought }}</td>
                                                 <td>
                                                     <span class="delta-chip {% if history.value_delta >= 0.0 %}pos{% else %}neg{% endif %}">
-                                                        {% if history.value_delta > 0.0 %}+{% endif %}${{ history.value_delta }}
+                                                        {% if history.value_delta > 0.0 %}+{% endif %}{{ history.value_delta | format_currency }}
                                                     </span>
                                                 </td>
                                                 <td class="text-end">
@@ -368,7 +404,7 @@
                                                         <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editPurchaseModal-{{ history.id }}">
                                                             <i class="bi bi-pencil-square"></i>
                                                         </button>
-                                                        <form action="/assets/purchase/delete/{{ history.id }}" method="POST" onsubmit="return confirm('¿Eliminar esta compra específica?');">
+                                                        <form action="/assets/purchase/delete/{{ history.id }}" method="POST" onsubmit="return confirm('Excluir esta compra específica?');">
                                                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                                                 <i class="bi bi-trash"></i>
                                                             </button>
@@ -387,17 +423,17 @@
                                                   <form action="/assets/purchase/update/{{ history.id }}" method="POST">
                                                       <div class="modal-body text-start">
                                                           <div class="mb-3">
-                                                              <label for="edit_bought_for_{{ history.id }}" class="form-label fw-semibold text-light">Precio de Compra ($)</label>
+                                                              <label for="edit_bought_for_{{ history.id }}" class="form-label fw-semibold text-light">Preço de Compra ($)</label>
                                                               <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_bought_for_{{ history.id }}" name="bought_for" value="{{ history.bought_for }}" required>
                                                           </div>
                                                           <div class="mb-3">
-                                                              <label for="edit_quantity_{{ history.id }}" class="form-label fw-semibold text-light">Cantidad Comprada</label>
+                                                              <label for="edit_quantity_{{ history.id }}" class="form-label fw-semibold text-light">Quantidade Comprada</label>
                                                               <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="edit_quantity_{{ history.id }}" name="quantity_bought" value="{{ history.quantity_bought }}" required>
                                                           </div>
                                                       </div>
                                                       <div class="modal-footer border-secondary">
                                                           <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal">Cancelar</button>
-                                                          <button type="submit" class="btn btn-primary fw-semibold">Guardar Cambios</button>
+                                                          <button type="submit" class="btn btn-primary fw-semibold">Salvar Alterações</button>
                                                       </div>
                                                   </form>
                                                 </div>
@@ -410,8 +446,8 @@
                             {% endif %}
 
                             <div class="d-flex justify-content-end border-top border-secondary pt-3 mt-3">
-                                <form action="/assets/delete/{{ owned.id }}" method="POST" onsubmit="return confirm('ATENCIÓN: Esto eliminará TODAS las compras de {{ owned.name }}. ¿Continuar?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill me-1"></i> Eliminar Todo el Activo</button>
+                                <form action="/assets/delete/{{ owned.id }}" method="POST" onsubmit="return confirm('ATENÇÃO: Isso excluirá TODAS as compras de {{ owned.name }}. Continuar?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash-fill me-1"></i> Excluir Todo o Ativo</button>
                                 </form>
                             </div>
                         </div>
@@ -428,27 +464,27 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content bg-dark text-light border-secondary">
       <div class="modal-header border-secondary">
-        <h5 class="modal-title text-white fw-bold" id="purchaseModalLabel">Registrar Nueva Compra</h5>
+        <h5 class="modal-title text-white fw-bold" id="purchaseModalLabel">Registrar Nova Compra</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="/assets" method="POST">
           <div class="modal-body">
               <div class="mb-3">
-                  <label for="asset_id" class="form-label fw-semibold text-light">Selecciona el Activo</label>
+                  <label for="asset_id" class="form-label fw-semibold text-light">Selecione o Ativo</label>
                   <select class="form-select bg-dark text-white border-secondary" id="asset_id" name="asset_id" required>
-                      <option value="" disabled selected>Elige un activo de la lista...</option>
+                      <option value="" disabled selected>Escolha um ativo da lista...</option>
                       {% for asset in available_assets %}
                       <option value="{{ asset.id }}">{{ asset.name }}</option>
                       {% endfor %}
                   </select>
               </div>
               <div class="mb-3">
-                  <label for="unit_value" class="form-label fw-semibold text-light">Valor Unitario de Compra ($)</label>
-                  <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="unit_value" name="unit_value" placeholder="Ej: 60000.50" required>
+                  <label for="unit_value" class="form-label fw-semibold text-light">Valor Unitário de Compra ($)</label>
+                  <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="unit_value" name="unit_value" placeholder="Ex: 60000.50" required>
               </div>
               <div class="mb-3">
-                  <label for="quantity_owned" class="form-label fw-semibold text-light">Cantidad Comprada</label>
-                  <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="quantity_owned" name="quantity_owned" placeholder="Ej: 0.05" required>
+                  <label for="quantity_owned" class="form-label fw-semibold text-light">Quantidade Comprada</label>
+                  <input type="number" step="any" min="0" class="form-control bg-dark text-white border-secondary" id="quantity_owned" name="quantity_owned" placeholder="Ex: 0.05" required>
               </div>
           </div>
           <div class="modal-footer border-secondary">
@@ -462,9 +498,78 @@
 {% endblock %}
 
 {% block scripts %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // 1. Al cargar la página, leemos la memoria del navegador
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+
+    const dinamicLabels = {{ chart_labels|safe }};
+    const dinamicValues = {{ chart_values|safe }};
+
+    const portfolioData = {
+        labels: dinamicLabels,
+        datasets: [{
+            data: dinamicValues,
+            backgroundColor: [
+                '#f7931a', '#627eea', '#14f195', '#26a17b', 
+                '#e6007a', '#2a5ada', '#f0b90b', '#8247e5'
+            ],
+            borderColor: '#212529', 
+            borderWidth: 2,
+            hoverOffset: 4
+        }]
+    };
+
+    const config = {
+        type: 'doughnut',
+        data: portfolioData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#f8f9fa',
+                        padding: 20,
+                        usePointStyle: true,
+                        font: {
+                            family: "system-ui, -apple-system, sans-serif",
+                            size: 13
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                                // Formateo alineado a locale internacional para mantener el USD ($)
+                                label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    const myChart = new Chart(ctx, config);
+});
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
         const openAccordionId = sessionStorage.getItem("openAccordionId");
 
         if (openAccordionId) {
@@ -476,7 +581,6 @@
             }
         }
 
-        // 2. Escuchamos los clics en los botones para guardar el estado
         const accordionButtons = document.querySelectorAll('.accordion-button');
         accordionButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -490,9 +594,10 @@
             });
         });
     });
+</script>
 
+<script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Nos conectamos a la ruta SSE que creamos en Axum
         const evtSource = new EventSource("/api/sse/prices");
 
         evtSource.addEventListener("price_update", function(event) {
@@ -501,13 +606,13 @@
 
             if (priceCell) {
                 const prevRaw = parseFloat(priceCell.dataset.raw || priceCell.innerText.replace(/[$,]/g, ''));
-                priceCell.innerText = "$" + data.unit_value.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                data.unit_value.toLocaleString('en-US', { minimumFractionDigits: 2 });
                 priceCell.dataset.raw = data.unit_value;
 
                 const card = document.getElementById("ticker-" + data.api_id);
                 if (card && !isNaN(prevRaw)) {
                     card.classList.remove('flash-up', 'flash-down');
-                    void card.offsetWidth; // reinicia la animación
+                    void card.offsetWidth; 
                     card.classList.add(data.unit_value >= prevRaw ? 'flash-up' : 'flash-down');
                     setTimeout(() => card.classList.remove('flash-up', 'flash-down'), 900);
                 }
@@ -515,7 +620,7 @@
         });
 
         evtSource.onerror = function(err) {
-            console.error("SSE Error - Perdimos conexión con los precios en vivo.");
+            console.error("SSE Error - Perdemos a conexão com os preços ao vivo.");
         };
     });
 </script>

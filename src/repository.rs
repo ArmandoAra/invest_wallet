@@ -309,7 +309,7 @@ mod tests {
         assert_eq!(assets.len(), 1);
 
         // Actualizar
-        let updated = repo.update_asset_to_db(new_asset.id, Some("ethereum".to_string()), Some(3200.0), Some("ethereum".to_string()))
+        let updated = repo.update_asset_to_db(new_asset.id, Some("Ethereum".to_string()), Some(3200.0), Some("ethereum".to_string()))
             .await
             .expect("Fallo SQL")
             .expect("No retornó el asset actualizado");

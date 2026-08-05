@@ -1,1 +1,1 @@
-INSERT INTO assets (name, unit_value) VALUES ('Bitcoin', 50000.0);
+INSERT INTO assets (name, unit_value, api_id) VALUES ('Bitcoin', 50000.0, 'bitcoin');

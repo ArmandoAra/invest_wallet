@@ -182,6 +182,7 @@ mod tests {
             assert_eq!(asset.id, 1); // Assuming this is the first asset being created in the test database
             assert_eq!(asset.name, "Test Asset");
             assert_eq!(asset.unit_value, 100.0);
+            assert_eq!(asset.api_id, Some("test_asset".to_string()));
 
             insta::assert_json_snapshot!(asset);
         }
@@ -217,6 +218,7 @@ mod tests {
             assert_eq!(asset.id, 1);
             assert_eq!(asset.name, "Updated Bitcoin");
             assert_eq!(asset.unit_value, 60000.0);
+            assert_eq!(asset.api_id, Some("bitcoin".to_string()));
 
             insta::assert_json_snapshot!(asset);
         }
