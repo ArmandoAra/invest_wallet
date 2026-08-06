@@ -26,7 +26,7 @@
 
 ##  O que o projeto faz
 
-O **Invest Wallet** é uma plataforma web fullstack focada na gestão inteligente de portfólio e finanças pessoais. Ele permite que os usuários registrem suas compras de diversos ativos (como criptomoedas, ações e moedas fiduciárias) e acompanhem o desempenho financeiro em tempo real.
+O **Invest Wallet** é uma plataforma web fullstack focada na gestão de investimentos. Ele permite que os usuários registrem suas compras de diversos ativos (como criptomoedas, ações e moedas fiduciárias) e acompanhem o desempenho financeiro em tempo real.
 
 A aplicação calcula automaticamente:
 
