@@ -92,26 +92,22 @@ Ao longo do desenvolvimento, várias melhorias arquiteturais e de interface fora
 
 ##  Como executar a aplicação
 
-Para rodar a aplicação na sua máquina local, você precisará do **Docker** e do **Docker Compose** instalados.
+### Pré-requisitos
+*   **Docker Compose** instalado.
+*   **Docker Desktop** instalado e rodando.
+*   **Rust e Cargo** instalados (via [rustup](https://rustup.rs/)).
+*   **sqlx-cli** instalado localmente. Se não tiver, instale com: `cargo install sqlx-cli --no-default-features --features native-tls,postgres`
 
 ### 1. Clone o repositório e configure as variáveis
 
 Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
 
 ```env
-DATABASE_URL=postgres://admin:pass1234@db:5432/invest_wallet_db
+DATABASE_URL=postgres://admin:pass1234@127.0.0.1:5432/invest_wallet_db
 ADMIN_SECRET_KEY="supersecretkey_to_use_for_a_supersecret"
 ```
 
-### 2. Prepare o SQLx *(apenas se for desenvolver)*
-
-Caso tenha feito alterações no SQL, gere o cache offline do SQLx localmente (requer banco de dados rodando fora do Docker momentaneamente):
-
-```bash
-cargo sqlx prepare
-```
-
-### 3. Construa e inicie os containers
+### 2. Construa e inicie os containers
 
 Isso vai baixar o PostgreSQL e compilar a aplicação Rust em um ambiente isolado.
 
@@ -119,10 +115,16 @@ Isso vai baixar o PostgreSQL e compilar a aplicação Rust em um ambiente isolad
 docker compose up --build -d
 ```
 
-### 4. Execute as migrações do banco de dados
+### 3. Execute as migrações do banco de dados
 
 ```bash
-DATABASE_URL=postgres://admin:pass1234@localhost:5432/invest_wallet_db sqlx migrate run
+DATABASE_URL=postgres://admin:pass1234@127.0.0.1:5432/invest_wallet_db sqlx migrate run
+```
+
+### 4. Execute a aplicação Rust localmente
+
+```bash
+cargo run
 ```
 
 ---
@@ -134,8 +136,14 @@ DATABASE_URL=postgres://admin:pass1234@localhost:5432/invest_wallet_db sqlx migr
 Com os containers rodando, execute o script de bash para popular o sistema com os IDs corretos das APIs:
 
 ```bash
-chmod +x seed.sh
-./seed.sh
+chmod +x seed_assets.sh
+./seed_assets.sh
+```
+#### 1.1. Se você já tiver executado `cargo run` antes, pare a aplicação e execute novamente para que o worker seja iniciado com os dados corretos do seed:
+
+ctrl + C para parar a aplicação e depois execute:
+```bash
+cargo run
 ```
 
 ### 2. Acesse a aplicação
@@ -158,9 +166,6 @@ Durante a construção deste projeto, foram enfrentados e superados diversos des
 
 - **Gerenciamento do ciclo de vida em Rust**
   Entendimento prático de por que o compilador do Rust é tão rigoroso com referências cruzadas, e como lidar com estruturas como `Option<String>` dentro do ecossistema do Askama (desempacotando valores corretamente para evitar erros de tipagem no HTML).
-
-- **Arquitetura multi-stage no Docker com ferramentas estritas**
-  Como contornar o problema de ferramentas como o SQLx, que exigem conexão com o banco em tempo de compilação, utilizando a flag `SQLX_OFFLINE` e o arquivo `sqlx-data.json`.
 
 - **Comunicação Frontend/Backend**
   Diferença entre renderização no servidor e no cliente, e como injetar estruturas de dados complexas (vetores em Rust) como strings JSON seguras para serem consumidas pelo JavaScript do navegador (Chart.js).
